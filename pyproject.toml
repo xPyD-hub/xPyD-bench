@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xpyd-bench"
+version = "0.1.0"
+description = "Benchmarking & PD ratio planning tool for xPyD proxy"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.27.0",
+    "aiohttp>=3.9.0",
+    "numpy>=1.26.0",
+    "pydantic>=2.0.0",
+    "PyYAML>=6.0",
+    "rich>=13.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.3.0",
+    "isort>=5.13.0",
+    "pre-commit>=3.6.0",
+]
+
+[project.scripts]
+xpyd-bench = "xpyd_bench.cli:bench_main"
+xpyd-plan = "xpyd_bench.cli:plan_main"
+
+# Reserved for future xpyd CLI subcommand discovery
+# [project.entry-points."xpyd.commands"]
+# bench = "xpyd_bench.cli:bench_main"
+# plan = "xpyd_bench.cli:plan_main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

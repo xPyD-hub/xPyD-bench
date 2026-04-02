@@ -1,0 +1,11 @@
+# Example benchmark config
+target: http://localhost:8080
+endpoint: chat  # or "completion"
+concurrency: 16
+num_requests: 200
+max_tokens: 256
+stream: true
+model: null  # auto-detect from proxy
+
+# Optional: use a dataset for prompts
+# dataset: datasets/sample.json
