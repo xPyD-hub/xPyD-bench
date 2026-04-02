@@ -1,8 +1,0 @@
-# Example planner config
-budget: 8  # total nodes/GPUs available
-
-# Option 1: use benchmark results
-# data: results.json
-
-# Option 2: use dataset for offline estimation
-# dataset: datasets/sample.json

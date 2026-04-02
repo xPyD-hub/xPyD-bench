@@ -1,4 +1,4 @@
-"""CLI entry points for xpyd-bench and xpyd-plan."""
+"""CLI entry point for xpyd-bench."""
 
 from __future__ import annotations
 
@@ -74,8 +74,10 @@ def bench_main(argv: list[str] | None = None) -> None:
 
     args = parser.parse_args(argv)
 
+    from xpyd_bench import __version__
+
     # TODO: implement benchmark runner
-    print(f"xpyd-bench v{_get_version()}")
+    print(f"xpyd-bench v{__version__}")
     print(f"  Target:      {args.target}")
     print(f"  Endpoint:    /v1/{'chat/completions' if args.endpoint == 'chat' else 'completions'}")
     print(f"  Concurrency: {args.concurrency}")
@@ -84,54 +86,3 @@ def bench_main(argv: list[str] | None = None) -> None:
     print(f"  Stream:      {args.stream}")
     print()
     print("Benchmark runner not yet implemented.")
-
-
-def plan_main(argv: list[str] | None = None) -> None:
-    """Entry point for `xpyd-plan` command."""
-    parser = argparse.ArgumentParser(
-        prog="xpyd-plan",
-        description="Recommend optimal Prefill:Decode node ratio",
-    )
-    parser.add_argument(
-        "--data",
-        type=str,
-        default=None,
-        help="Path to benchmark results (JSON) from xpyd-bench",
-    )
-    parser.add_argument(
-        "--dataset",
-        type=str,
-        default=None,
-        help="Path to dataset file for offline estimation (without running benchmark)",
-    )
-    parser.add_argument(
-        "--budget",
-        type=int,
-        required=True,
-        help="Total number of available nodes/GPUs",
-    )
-    parser.add_argument(
-        "--output",
-        type=str,
-        default=None,
-        help="Output file path for recommendation (JSON)",
-    )
-
-    args = parser.parse_args(argv)
-
-    if not args.data and not args.dataset:
-        parser.error("Either --data or --dataset is required")
-
-    # TODO: implement planner
-    print(f"xpyd-plan v{_get_version()}")
-    print(f"  Data:    {args.data}")
-    print(f"  Dataset: {args.dataset}")
-    print(f"  Budget:  {args.budget} nodes")
-    print()
-    print("Planner not yet implemented.")
-
-
-def _get_version() -> str:
-    from xpyd_bench import __version__
-
-    return __version__

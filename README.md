@@ -5,7 +5,8 @@ Benchmarking & PD ratio planning tool for [xPyD-proxy](https://github.com/xPyD-h
 ## Features
 
 - **`xpyd-bench`** — Benchmark xPyD proxy with configurable concurrency, request patterns, and both `/v1/completions` and `/v1/chat/completions` endpoints
-- **`xpyd-plan`** — Analyze benchmark results or dataset characteristics to recommend optimal Prefill:Decode node ratios
+
+For PD ratio planning, see [xPyD-plan](https://github.com/xPyD-hub/xPyD-plan).
 
 ## Install
 
@@ -30,16 +31,6 @@ xpyd-bench --target http://localhost:8080 \
            --endpoint completion \
            --concurrency 8 \
            --num-requests 100
-```
-
-### Plan
-
-```bash
-# Analyze benchmark results to recommend PD ratio
-xpyd-plan --data results.json --budget 8
-
-# Estimate from dataset (without running benchmark)
-xpyd-plan --dataset dataset.json --budget 8
 ```
 
 ## Configuration

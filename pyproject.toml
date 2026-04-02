@@ -28,12 +28,10 @@ dev = [
 
 [project.scripts]
 xpyd-bench = "xpyd_bench.cli:bench_main"
-xpyd-plan = "xpyd_bench.cli:plan_main"
 
 # Reserved for future xpyd CLI subcommand discovery
 # [project.entry-points."xpyd.commands"]
 # bench = "xpyd_bench.cli:bench_main"
-# plan = "xpyd_bench.cli:plan_main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
