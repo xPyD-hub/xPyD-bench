@@ -108,15 +108,14 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Output length distribution for synthetic datasets (default: fixed).",
     )
 
-    # Sampling parameters
-    sampling = parser.add_argument_group("sampling parameters")
-    sampling.add_argument("--temperature", type=float, default=None)
-    sampling.add_argument("--top-p", type=float, default=None)
-    sampling.add_argument("--top-k", type=int, default=None)
+    # Sampling parameters (OpenAI API standard)
+    sampling = parser.add_argument_group("sampling parameters (OpenAI API standard)")
+    sampling.add_argument(
+        "--temperature", type=float, default=None, help="Sampling temperature."
+    )
+    sampling.add_argument("--top-p", type=float, default=None, help="Nucleus sampling top-p.")
     sampling.add_argument("--frequency-penalty", type=float, default=None)
     sampling.add_argument("--presence-penalty", type=float, default=None)
-    sampling.add_argument("--best-of", type=int, default=None)
-    sampling.add_argument("--use-beam-search", action="store_true")
     sampling.add_argument("--logprobs", type=int, default=None)
     sampling.add_argument(
         "--stop",
@@ -168,6 +167,30 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Request usage stats in the final streaming chunk (stream_options).",
     )
 
+    # vLLM-specific extensions (not part of the OpenAI API spec)
+    vllm_ext = parser.add_argument_group(
+        "vLLM extensions",
+        "Parameters specific to vLLM serving. These are NOT part of the "
+        "OpenAI API spec and may cause errors with non-vLLM backends.",
+    )
+    vllm_ext.add_argument(
+        "--top-k",
+        type=int,
+        default=None,
+        help="[vLLM only] Top-k sampling. Not in OpenAI API spec.",
+    )
+    vllm_ext.add_argument(
+        "--best-of",
+        type=int,
+        default=None,
+        help="[vLLM only] Generate best_of sequences and return the best. Not in OpenAI API spec.",
+    )
+    vllm_ext.add_argument(
+        "--use-beam-search",
+        action="store_true",
+        help="[vLLM only] Use beam search instead of sampling. Not in OpenAI API spec.",
+    )
+
     # Output
     parser.add_argument(
         "--save-result",
@@ -187,10 +210,10 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Disable progress bar.",
     )
-    parser.add_argument(
+    vllm_ext.add_argument(
         "--ignore-eos",
         action="store_true",
-        help="Ignore EOS token in generation.",
+        help="[vLLM only] Ignore EOS token in generation. Not in OpenAI API spec.",
     )
 
     # Extended config
