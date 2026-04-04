@@ -77,7 +77,7 @@
 - YAML config support (`timeout`, `retries`, `retry_delay`)
 - Tests covering timeout, retry success, retry exhaustion, backoff
 
-## M11: API Key Authentication
+## M11: API Key Authentication ✅
 - `--api-key` CLI flag for Bearer token authentication
 - `OPENAI_API_KEY` environment variable fallback when `--api-key` not provided
 - Authorization header (`Bearer <key>`) added to all HTTP requests
