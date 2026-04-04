@@ -37,6 +37,31 @@ def set_config(config: ServerConfig) -> None:
     _config = config
 
 
+# Standard headers to exclude from echo
+_STANDARD_HEADERS = frozenset({
+    "host", "user-agent", "accept", "accept-encoding", "accept-language",
+    "connection", "content-length", "content-type", "authorization",
+    "transfer-encoding", "te",
+})
+
+
+def _extract_custom_headers(request: Request) -> dict[str, str]:
+    """Extract non-standard HTTP headers from the request for echo."""
+    custom: dict[str, str] = {}
+    for key, value in request.headers.items():
+        if key.lower() not in _STANDARD_HEADERS:
+            custom[key] = value
+    return custom
+
+
+def _echo_headers_dict(request: Request) -> dict[str, str]:
+    """Build response headers that echo custom request headers."""
+    custom = _extract_custom_headers(request)
+    if not custom:
+        return {}
+    return {"x-echo-headers": json.dumps(custom, separators=(",", ":"))}
+
+
 def _normalize_prompt(prompt: str | list | None) -> str:
     """Normalize all 4 OpenAI prompt formats to a single string.
 
@@ -256,7 +281,7 @@ async def _handle_completions(request: Request) -> JSONResponse | StreamingRespo
                 seed=seed,
                 ignore_eos=ignore_eos,
             ),
-            media_type="text/event-stream",
+            media_type="text/event-stream", headers=_echo_headers_dict(request),
         )
 
     # Non-streaming: simulate full latency
@@ -318,7 +343,7 @@ async def _handle_completions(request: Request) -> JSONResponse | StreamingRespo
     }
     if seed is not None:
         resp_body["system_fingerprint"] = f"fp_seed_{seed}"
-    return JSONResponse(resp_body)
+    return JSONResponse(resp_body, headers=_echo_headers_dict(request))
 
 
 async def _stream_completions(
@@ -516,7 +541,7 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
                 seed=seed,
                 ignore_eos=ignore_eos,
             ),
-            media_type="text/event-stream",
+            media_type="text/event-stream", headers=_echo_headers_dict(request),
         )
 
     # Non-streaming
@@ -566,7 +591,7 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
     }
     if seed is not None:
         resp_body["system_fingerprint"] = f"fp_seed_{seed}"
-    return JSONResponse(resp_body)
+    return JSONResponse(resp_body, headers=_echo_headers_dict(request))
 
 
 async def _stream_chat_completions(
