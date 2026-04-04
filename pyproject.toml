@@ -30,13 +30,13 @@ dev = [
 ]
 
 [project.scripts]
-xpyd-bench = "xpyd_bench.cli:bench_main"
-xpyd-bench-compare = "xpyd_bench.cli:compare_main"
-xpyd-bench-multi = "xpyd_bench.cli:multi_main"
-xpyd-bench-profile = "xpyd_bench.cli:profile_main"
-xpyd-bench-replay = "xpyd_bench.cli:replay_main"
-xpyd-bench-config-dump = "xpyd_bench.config_cmd:config_dump_main"
-xpyd-bench-config-validate = "xpyd_bench.config_cmd:config_validate_main"
+xpyd-bench = "xpyd_bench.main:main"
+xpyd-bench-compare = "xpyd_bench.main:deprecated_compare_main"
+xpyd-bench-multi = "xpyd_bench.main:deprecated_multi_main"
+xpyd-bench-profile = "xpyd_bench.main:deprecated_profile_main"
+xpyd-bench-replay = "xpyd_bench.main:deprecated_replay_main"
+xpyd-bench-config-dump = "xpyd_bench.main:deprecated_config_dump_main"
+xpyd-bench-config-validate = "xpyd_bench.main:deprecated_config_validate_main"
 xpyd-dummy = "xpyd_bench.dummy.cli:dummy_main"
 
 # Reserved for future xpyd CLI subcommand discovery
