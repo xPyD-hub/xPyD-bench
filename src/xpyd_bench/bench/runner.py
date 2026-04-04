@@ -266,6 +266,41 @@ def _build_payload(
     if getattr(args, "stream_options_include_usage", False):
         payload["stream_options"] = {"include_usage": True}
 
+    # Chat-specific parameters (only for chat endpoints)
+    if is_chat:
+        if getattr(args, "response_format", None) is not None:
+            import json as _json
+
+            if isinstance(args.response_format, str):
+                payload["response_format"] = _json.loads(args.response_format)
+            else:
+                payload["response_format"] = args.response_format
+        if getattr(args, "tools", None) is not None:
+            import json as _json
+            from pathlib import Path
+
+            tools_path = Path(args.tools)
+            if tools_path.is_file():
+                with open(tools_path) as f:
+                    payload["tools"] = _json.load(f)
+            else:
+                payload["tools"] = _json.loads(args.tools)
+        if getattr(args, "tool_choice", None) is not None:
+            import json as _json
+
+            try:
+                payload["tool_choice"] = _json.loads(args.tool_choice)
+            except (ValueError, TypeError):
+                payload["tool_choice"] = args.tool_choice
+        if getattr(args, "parallel_tool_calls", None) is not None:
+            payload["parallel_tool_calls"] = args.parallel_tool_calls
+        if getattr(args, "top_logprobs", None) is not None:
+            payload["top_logprobs"] = args.top_logprobs
+        if getattr(args, "max_completion_tokens", None) is not None:
+            payload["max_completion_tokens"] = args.max_completion_tokens
+        if getattr(args, "service_tier", None) is not None:
+            payload["service_tier"] = args.service_tier
+
     return payload
 
 

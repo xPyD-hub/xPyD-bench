@@ -191,6 +191,54 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="[vLLM only] Use beam search instead of sampling. Not in OpenAI API spec.",
     )
 
+    # Chat-specific parameters (OpenAI API)
+    chat_params = parser.add_argument_group(
+        "chat-specific parameters",
+        "Parameters specific to /v1/chat/completions (OpenAI API standard).",
+    )
+    chat_params.add_argument(
+        "--response-format",
+        type=str,
+        default=None,
+        help='Force output format. JSON string, e.g. \'{"type": "json_object"}\'.',
+    )
+    chat_params.add_argument(
+        "--tools",
+        type=str,
+        default=None,
+        help="Path to JSON file defining tools/functions the model may call.",
+    )
+    chat_params.add_argument(
+        "--tool-choice",
+        type=str,
+        default=None,
+        help='Tool choice: "none", "auto", "required", or JSON string for specific function.',
+    )
+    chat_params.add_argument(
+        "--parallel-tool-calls",
+        action="store_true",
+        default=None,
+        help="Allow parallel tool calls (default: server decides).",
+    )
+    chat_params.add_argument(
+        "--top-logprobs",
+        type=int,
+        default=None,
+        help="Number of most likely tokens to return at each position (0-20).",
+    )
+    chat_params.add_argument(
+        "--max-completion-tokens",
+        type=int,
+        default=None,
+        help="Upper bound on completion tokens (newer alternative to max_tokens).",
+    )
+    chat_params.add_argument(
+        "--service-tier",
+        type=str,
+        default=None,
+        help='Latency tier for processing, e.g. "auto" or "default".',
+    )
+
     # Output
     parser.add_argument(
         "--save-result",
