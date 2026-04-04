@@ -15,6 +15,7 @@ class RequestResult:
     tpot_ms: float | None = None  # Time per output token
     itl_ms: list[float] = field(default_factory=list)  # Inter-token latencies
     latency_ms: float = 0.0  # End-to-end latency
+    start_time: float | None = None  # perf_counter timestamp when request started
     retries: int = 0
     success: bool = True
     error: str | None = None
@@ -76,6 +77,9 @@ class BenchmarkResult:
 
     # Partial result flag (set when benchmark was interrupted)
     partial: bool = False
+
+    # Benchmark start time (perf_counter) for relative timestamp computation
+    bench_start_time: float = 0.0
 
     # Environment metadata for reproducibility
     environment: dict[str, str] = field(default_factory=dict)
