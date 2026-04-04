@@ -87,6 +87,7 @@ _KNOWN_KEYS: set[str] = {
     "top_p",
     "use_beam_search",
     "user",
+    "metrics_ws_port",
     "warmup",
 }
 

@@ -679,6 +679,20 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     result.bench_start_time = overall_start
     shutdown_requested = False
 
+    # Metrics WebSocket server (M33)
+    metrics_ws_server = None
+    metrics_collector = None
+    ws_port = getattr(args, "metrics_ws_port", None)
+    if ws_port:
+        from xpyd_bench.metrics_ws import MetricsCollector, MetricsWebSocketServer
+
+        metrics_collector = MetricsCollector()
+        metrics_collector.start()
+        metrics_ws_server = MetricsWebSocketServer(metrics_collector, port=ws_port)
+        await metrics_ws_server.start()
+        if not args.disable_tqdm:
+            print(f"Metrics WebSocket server started on ws://0.0.0.0:{ws_port}/metrics")
+
     async def _tracked_task(client: httpx.AsyncClient, prompt: str) -> RequestResult:
         payload = _mk_payload(prompt)
         r = await _task(client, prompt)
@@ -690,6 +704,14 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
                 reporter.advance(success=r.success, latency_ms=latency)
             else:
                 reporter.advance(success=r.success)
+        if metrics_collector:
+            metrics_collector.record(
+                success=r.success,
+                latency_ms=r.latency_ms,
+                ttft_ms=r.ttft_ms,
+                prompt_tokens=r.prompt_tokens,
+                completion_tokens=r.completion_tokens,
+            )
         return r
 
     grace_period = getattr(args, "shutdown_grace_period", 5.0) or 5.0
@@ -762,6 +784,9 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
 
     if debug_logger:
         debug_logger.close()
+
+    if metrics_ws_server:
+        await metrics_ws_server.stop()
 
     _compute_metrics(result)
 
