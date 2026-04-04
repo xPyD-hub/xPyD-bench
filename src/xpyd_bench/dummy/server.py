@@ -24,6 +24,7 @@ class ServerConfig:
     model_name: str = "dummy-model"
     max_tokens_default: int = 128
     eos_min_ratio: float = 0.5  # EOS won't fire before this fraction of max_tokens
+    require_api_key: str | None = None  # If set, require this API key for auth
 
 
 # Global config — set before starting the server
@@ -738,10 +739,30 @@ def create_app(config: ServerConfig | None = None) -> Starlette:
     if config is not None:
         set_config(config)
 
+    from starlette.middleware import Middleware
+    from starlette.middleware.base import BaseHTTPMiddleware
+
+    class AuthMiddleware(BaseHTTPMiddleware):
+        """Optionally enforce Bearer token auth."""
+
+        async def dispatch(self, request: Request, call_next):  # type: ignore[override]
+            cfg = _config
+            if cfg.require_api_key and request.url.path.startswith("/v1/"):
+                auth = request.headers.get("authorization", "")
+                expected = f"Bearer {cfg.require_api_key}"
+                if auth != expected:
+                    return JSONResponse(
+                        {"error": {"message": "Invalid API key", "type": "auth_error"}},
+                        status_code=401,
+                    )
+            return await call_next(request)
+
     routes = [
         Route("/v1/completions", _handle_completions, methods=["POST"]),
         Route("/v1/chat/completions", _handle_chat_completions, methods=["POST"]),
         Route("/v1/models", _handle_models, methods=["GET"]),
         Route("/health", _handle_health, methods=["GET"]),
     ]
-    return Starlette(routes=routes)
+
+    middleware = [Middleware(AuthMiddleware)]
+    return Starlette(routes=routes, middleware=middleware)

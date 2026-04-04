@@ -273,6 +273,15 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         "(excluded from metrics). Default: 0.",
     )
 
+    # Authentication
+    parser.add_argument(
+        "--api-key",
+        type=str,
+        default=None,
+        help="API key for Bearer token authentication. "
+        "Falls back to OPENAI_API_KEY env var if not provided.",
+    )
+
     # Timeout & retry
     parser.add_argument(
         "--timeout",
@@ -409,6 +418,12 @@ def bench_main(argv: list[str] | None = None) -> None:
         args = _load_yaml_config(args.config, args)
 
     base_url = _resolve_base_url(args)
+
+    # Resolve API key: CLI > YAML config > env var
+    import os
+
+    if args.api_key is None:
+        args.api_key = os.environ.get("OPENAI_API_KEY")
 
     from xpyd_bench import __version__
     from xpyd_bench.bench.runner import run_benchmark
