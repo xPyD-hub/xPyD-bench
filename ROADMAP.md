@@ -187,7 +187,7 @@
 - Legacy standalone entry points still work but print deprecation warning
 - Tests covering subcommand routing, backward compat, version flag, deprecation warnings
 
-## M25: Result Aggregation Across Multiple Runs
+## M25: Result Aggregation Across Multiple Runs ✅
 - `xpyd-bench aggregate <result1.json> <result2.json> ...` CLI subcommand
 - Compute mean, stddev, min, max across runs for key metrics (TTFT, TPOT, throughput, latency percentiles)
 - Coefficient of variation (CV) per metric to flag unstable benchmarks
