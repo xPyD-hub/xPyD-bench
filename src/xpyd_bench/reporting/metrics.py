@@ -22,14 +22,23 @@ def compute_time_series(
 
     num_windows = max(1, int(result.total_duration_s / window_s) + 1)
 
-    # We don't have absolute timestamps per request, so approximate by order.
-    # Distribute requests evenly across duration for bucketing.
+    # Use actual start_time timestamps when available; fall back to index-based
+    # approximation for backward compatibility with older result data.
+    has_timestamps = (
+        result.bench_start_time > 0
+        and all(r.start_time is not None for r in successful)
+    )
+
     buckets: list[list[RequestResult]] = [[] for _ in range(num_windows)]
     for idx, req in enumerate(successful):
-        # Estimate request finish time proportionally
-        frac = idx / max(len(successful) - 1, 1)
-        t = frac * result.total_duration_s
+        if has_timestamps:
+            t = req.start_time - result.bench_start_time  # type: ignore[operator]
+        else:
+            # Legacy fallback: distribute evenly by index
+            frac = idx / max(len(successful) - 1, 1)
+            t = frac * result.total_duration_s
         bucket_idx = min(int(t / window_s), num_windows - 1)
+        bucket_idx = max(0, bucket_idx)  # clamp negative
         buckets[bucket_idx].append(req)
 
     series = []

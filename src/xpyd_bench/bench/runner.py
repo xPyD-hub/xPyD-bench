@@ -130,6 +130,7 @@ async def _send_request(
         attempts = attempt
         result = RequestResult()
         start = time.perf_counter()
+        result.start_time = start
 
         try:
             if is_streaming:
@@ -178,6 +179,7 @@ async def _send_streaming(
 ) -> RequestResult:
     """Send a streaming request, measure TTFT / ITL."""
     result = RequestResult()
+    result.start_time = start
     payload["stream"] = True
     first_token_time: float | None = None
     last_token_time: float = start
@@ -553,6 +555,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
 
     tasks: list[asyncio.Task] = []
     overall_start = time.perf_counter()
+    result.bench_start_time = overall_start
     shutdown_requested = False
 
     async def _tracked_task(client: httpx.AsyncClient, prompt: str) -> RequestResult:
