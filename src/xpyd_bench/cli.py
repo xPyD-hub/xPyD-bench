@@ -597,6 +597,90 @@ def compare_main(argv: list[str] | None = None) -> None:
         raise SystemExit(1)
 
 
+def multi_main(argv: list[str] | None = None) -> None:
+    """Entry point for ``xpyd-bench-multi`` command."""
+    parser = argparse.ArgumentParser(
+        prog="xpyd-bench-multi",
+        description="Benchmark multiple endpoints with the same workload and compare results",
+    )
+    parser.add_argument(
+        "--endpoints",
+        type=str,
+        nargs="+",
+        required=True,
+        help="Base URLs of endpoints to benchmark (at least 2).",
+    )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=5.0,
+        help="Regression threshold percentage (default: 5.0).",
+    )
+    parser.add_argument(
+        "--json-output",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Export all results and comparisons to a JSON file.",
+    )
+    parser.add_argument(
+        "--markdown-output",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Export comparison as a Markdown table.",
+    )
+    _add_vllm_compat_args(parser)
+    args = parser.parse_args(argv)
+
+    if len(args.endpoints) < 2:
+        parser.error("--endpoints requires at least 2 URLs")
+
+    # Merge YAML config if provided
+    if args.config:
+        args = _load_yaml_config(args.config, args)
+
+    # Resolve API key
+    import os
+
+    if args.api_key is None:
+        args.api_key = os.environ.get("OPENAI_API_KEY")
+
+    # Resolve custom headers
+    args.custom_headers = _resolve_custom_headers(args)
+
+    from xpyd_bench import __version__
+    from xpyd_bench.multi import (
+        export_multi_json,
+        export_multi_markdown,
+        format_multi_summary,
+        run_multi_benchmark,
+    )
+
+    print(f"xpyd-bench-multi v{__version__}")
+    print(f"  Endpoints: {', '.join(args.endpoints)}")
+    print(f"  Threshold: {args.threshold}%")
+    print()
+
+    multi = asyncio.run(
+        run_multi_benchmark(args, args.endpoints, threshold_pct=args.threshold)
+    )
+
+    print(format_multi_summary(multi))
+
+    if args.json_output:
+        p = export_multi_json(multi, args.json_output)
+        print(f"\nJSON output saved to {p}")
+
+    if args.markdown_output:
+        p = export_multi_markdown(multi, args.markdown_output)
+        print(f"\nMarkdown output saved to {p}")
+
+    # Exit code 1 if any regression detected
+    if any(c.has_regression for c in multi.comparisons):
+        raise SystemExit(1)
+
+
 def _save_result(args: argparse.Namespace, result: dict) -> None:
     """Save benchmark result to JSON."""
     from datetime import datetime
