@@ -54,6 +54,10 @@ def _build_summary_rows(result: BenchmarkResult) -> str:
 def _build_percentile_rows(result: BenchmarkResult) -> str:
     """Build HTML table rows for latency percentiles."""
     rows = []
+
+    def _fh(v: float | None) -> str:
+        return f"{v:.2f}" if v is not None else "N/A"
+
     for label, prefix in [("TTFT", "ttft"), ("TPOT", "tpot"),
                            ("ITL", "itl"), ("E2E Latency", "e2el")]:
         mean = getattr(result, f"mean_{prefix}_ms")
@@ -63,9 +67,9 @@ def _build_percentile_rows(result: BenchmarkResult) -> str:
         p99 = getattr(result, f"p99_{prefix}_ms")
         rows.append(
             f"<tr><td>{_safe(label)}</td>"
-            f"<td>{mean:.2f}</td><td>{p50:.2f}</td>"
-            f"<td>{p90:.2f}</td><td>{p95:.2f}</td>"
-            f"<td class='p99'>{p99:.2f}</td></tr>"
+            f"<td>{_fh(mean)}</td><td>{_fh(p50)}</td>"
+            f"<td>{_fh(p90)}</td><td>{_fh(p95)}</td>"
+            f"<td class='p99'>{_fh(p99)}</td></tr>"
         )
     return "\n".join(rows)
 

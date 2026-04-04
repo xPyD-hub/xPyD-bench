@@ -1060,9 +1060,9 @@ def replay_main(argv: list[str] | None = None) -> None:
     print(f"Replay complete: {bench_result.completed}/{bench_result.num_prompts} succeeded")
     print(f"Total duration:  {bench_result.total_duration_s:.2f}s")
     print(f"Throughput:      {bench_result.request_throughput:.2f} req/s")
-    if bench_result.mean_ttft_ms > 0:
+    if bench_result.mean_ttft_ms is not None:
         print(f"Mean TTFT:       {bench_result.mean_ttft_ms:.2f}ms")
-    if bench_result.mean_e2el_ms > 0:
+    if bench_result.mean_e2el_ms is not None:
         print(f"Mean E2E:        {bench_result.mean_e2el_ms:.2f}ms")
 
     if args.save_result:

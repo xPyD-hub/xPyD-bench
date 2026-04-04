@@ -125,8 +125,10 @@ def format_multi_summary(multi: MultiEndpointResult) -> str:
     for label, attr in display_metrics:
         row = [f"{label:<28s}"]
         for r in multi.results:
-            val = getattr(r, attr, 0)
-            if isinstance(val, float):
+            val = getattr(r, attr, None)
+            if val is None:
+                row.append(f"{'N/A':>20s}")
+            elif isinstance(val, float):
                 row.append(f"{val:>20.2f}")
             else:
                 row.append(f"{val!s:>20s}")
@@ -193,8 +195,10 @@ def format_multi_markdown(multi: MultiEndpointResult) -> str:
     for metric in display_metrics:
         cells = [metric]
         for r in multi.results:
-            val = getattr(r, metric, 0)
-            if isinstance(val, float):
+            val = getattr(r, metric, None)
+            if val is None:
+                cells.append("N/A")
+            elif isinstance(val, float):
                 cells.append(f"{val:.2f}")
             else:
                 cells.append(str(val))

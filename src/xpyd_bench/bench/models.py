@@ -48,31 +48,31 @@ class BenchmarkResult:
     output_throughput: float = 0.0  # output tok/s
     total_token_throughput: float = 0.0  # (input+output) tok/s
 
-    # Latency percentiles
-    mean_ttft_ms: float = 0.0
-    median_ttft_ms: float = 0.0
-    p50_ttft_ms: float = 0.0
-    p90_ttft_ms: float = 0.0
-    p95_ttft_ms: float = 0.0
-    p99_ttft_ms: float = 0.0
-    mean_tpot_ms: float = 0.0
-    median_tpot_ms: float = 0.0
-    p50_tpot_ms: float = 0.0
-    p90_tpot_ms: float = 0.0
-    p95_tpot_ms: float = 0.0
-    p99_tpot_ms: float = 0.0
-    mean_itl_ms: float = 0.0
-    median_itl_ms: float = 0.0
-    p50_itl_ms: float = 0.0
-    p90_itl_ms: float = 0.0
-    p95_itl_ms: float = 0.0
-    p99_itl_ms: float = 0.0
-    mean_e2el_ms: float = 0.0
-    median_e2el_ms: float = 0.0
-    p50_e2el_ms: float = 0.0
-    p90_e2el_ms: float = 0.0
-    p95_e2el_ms: float = 0.0
-    p99_e2el_ms: float = 0.0
+    # Latency percentiles (None = metric not measured)
+    mean_ttft_ms: float | None = None
+    median_ttft_ms: float | None = None
+    p50_ttft_ms: float | None = None
+    p90_ttft_ms: float | None = None
+    p95_ttft_ms: float | None = None
+    p99_ttft_ms: float | None = None
+    mean_tpot_ms: float | None = None
+    median_tpot_ms: float | None = None
+    p50_tpot_ms: float | None = None
+    p90_tpot_ms: float | None = None
+    p95_tpot_ms: float | None = None
+    p99_tpot_ms: float | None = None
+    mean_itl_ms: float | None = None
+    median_itl_ms: float | None = None
+    p50_itl_ms: float | None = None
+    p90_itl_ms: float | None = None
+    p95_itl_ms: float | None = None
+    p99_itl_ms: float | None = None
+    mean_e2el_ms: float | None = None
+    median_e2el_ms: float | None = None
+    p50_e2el_ms: float | None = None
+    p90_e2el_ms: float | None = None
+    p95_e2el_ms: float | None = None
+    p99_e2el_ms: float | None = None
 
     # Partial result flag (set when benchmark was interrupted)
     partial: bool = False

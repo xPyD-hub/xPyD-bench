@@ -87,6 +87,9 @@ def format_text_report(result: BenchmarkResult) -> str:
     header = f"  {'Metric':6s} {'Mean':>8s} {'P50':>8s} {'P90':>8s} {'P95':>8s} {'P99':>8s}"
     lines.append(header)
     lines.append("  " + "-" * 66)
+    def _fmt(v: float | None) -> str:
+        return f"{v:8.2f}" if v is not None else "     N/A"
+
     for label, prefix in [("TTFT", "ttft"), ("TPOT", "tpot"), ("ITL", "itl"), ("E2EL", "e2el")]:
         mean = getattr(result, f"mean_{prefix}_ms")
         p50 = getattr(result, f"p50_{prefix}_ms")
@@ -94,7 +97,7 @@ def format_text_report(result: BenchmarkResult) -> str:
         p95 = getattr(result, f"p95_{prefix}_ms")
         p99 = getattr(result, f"p99_{prefix}_ms")
         lines.append(
-            f"  {label:6s} {mean:8.2f} {p50:8.2f} {p90:8.2f} {p95:8.2f} {p99:8.2f}"
+            f"  {label:6s} {_fmt(mean)} {_fmt(p50)} {_fmt(p90)} {_fmt(p95)} {_fmt(p99)}"
         )
     lines.append("  " + "-" * 66)
     lines.append("=" * 70)
@@ -104,6 +107,11 @@ def format_text_report(result: BenchmarkResult) -> str:
 # ---------------------------------------------------------------------------
 # Summary column definitions (shared by CSV and Markdown)
 # ---------------------------------------------------------------------------
+
+def _fmt_or_na(v: float | None) -> str:
+    """Format a float or return N/A for None."""
+    return f"{v:.2f}" if v is not None else "N/A"
+
 
 _SUMMARY_COLUMNS = [
     ("backend", lambda r: r.backend),
@@ -115,26 +123,26 @@ _SUMMARY_COLUMNS = [
     ("request_throughput", lambda r: f"{r.request_throughput:.2f}"),
     ("output_throughput", lambda r: f"{r.output_throughput:.2f}"),
     ("total_token_throughput", lambda r: f"{r.total_token_throughput:.2f}"),
-    ("mean_ttft_ms", lambda r: f"{r.mean_ttft_ms:.2f}"),
-    ("p50_ttft_ms", lambda r: f"{r.p50_ttft_ms:.2f}"),
-    ("p90_ttft_ms", lambda r: f"{r.p90_ttft_ms:.2f}"),
-    ("p95_ttft_ms", lambda r: f"{r.p95_ttft_ms:.2f}"),
-    ("p99_ttft_ms", lambda r: f"{r.p99_ttft_ms:.2f}"),
-    ("mean_tpot_ms", lambda r: f"{r.mean_tpot_ms:.2f}"),
-    ("p50_tpot_ms", lambda r: f"{r.p50_tpot_ms:.2f}"),
-    ("p90_tpot_ms", lambda r: f"{r.p90_tpot_ms:.2f}"),
-    ("p95_tpot_ms", lambda r: f"{r.p95_tpot_ms:.2f}"),
-    ("p99_tpot_ms", lambda r: f"{r.p99_tpot_ms:.2f}"),
-    ("mean_itl_ms", lambda r: f"{r.mean_itl_ms:.2f}"),
-    ("p50_itl_ms", lambda r: f"{r.p50_itl_ms:.2f}"),
-    ("p90_itl_ms", lambda r: f"{r.p90_itl_ms:.2f}"),
-    ("p95_itl_ms", lambda r: f"{r.p95_itl_ms:.2f}"),
-    ("p99_itl_ms", lambda r: f"{r.p99_itl_ms:.2f}"),
-    ("mean_e2el_ms", lambda r: f"{r.mean_e2el_ms:.2f}"),
-    ("p50_e2el_ms", lambda r: f"{r.p50_e2el_ms:.2f}"),
-    ("p90_e2el_ms", lambda r: f"{r.p90_e2el_ms:.2f}"),
-    ("p95_e2el_ms", lambda r: f"{r.p95_e2el_ms:.2f}"),
-    ("p99_e2el_ms", lambda r: f"{r.p99_e2el_ms:.2f}"),
+    ("mean_ttft_ms", lambda r: _fmt_or_na(r.mean_ttft_ms)),
+    ("p50_ttft_ms", lambda r: _fmt_or_na(r.p50_ttft_ms)),
+    ("p90_ttft_ms", lambda r: _fmt_or_na(r.p90_ttft_ms)),
+    ("p95_ttft_ms", lambda r: _fmt_or_na(r.p95_ttft_ms)),
+    ("p99_ttft_ms", lambda r: _fmt_or_na(r.p99_ttft_ms)),
+    ("mean_tpot_ms", lambda r: _fmt_or_na(r.mean_tpot_ms)),
+    ("p50_tpot_ms", lambda r: _fmt_or_na(r.p50_tpot_ms)),
+    ("p90_tpot_ms", lambda r: _fmt_or_na(r.p90_tpot_ms)),
+    ("p95_tpot_ms", lambda r: _fmt_or_na(r.p95_tpot_ms)),
+    ("p99_tpot_ms", lambda r: _fmt_or_na(r.p99_tpot_ms)),
+    ("mean_itl_ms", lambda r: _fmt_or_na(r.mean_itl_ms)),
+    ("p50_itl_ms", lambda r: _fmt_or_na(r.p50_itl_ms)),
+    ("p90_itl_ms", lambda r: _fmt_or_na(r.p90_itl_ms)),
+    ("p95_itl_ms", lambda r: _fmt_or_na(r.p95_itl_ms)),
+    ("p99_itl_ms", lambda r: _fmt_or_na(r.p99_itl_ms)),
+    ("mean_e2el_ms", lambda r: _fmt_or_na(r.mean_e2el_ms)),
+    ("p50_e2el_ms", lambda r: _fmt_or_na(r.p50_e2el_ms)),
+    ("p90_e2el_ms", lambda r: _fmt_or_na(r.p90_e2el_ms)),
+    ("p95_e2el_ms", lambda r: _fmt_or_na(r.p95_e2el_ms)),
+    ("p99_e2el_ms", lambda r: _fmt_or_na(r.p99_e2el_ms)),
 ]
 
 _PER_REQUEST_COLUMNS = [
