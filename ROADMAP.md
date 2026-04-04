@@ -201,7 +201,7 @@
 - Print warnings for deprecated or conflicting options
 - Tests covering dump output and validation errors
 
-## M26: Embeddings Endpoint Benchmarking
+## M26: Embeddings Endpoint Benchmarking ✅
 - Support `/v1/embeddings` endpoint benchmarking
 - `--endpoint /v1/embeddings` with model and input text
 - Metrics: latency, throughput (requests/s, tokens/s), batch size impact
