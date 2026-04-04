@@ -292,7 +292,7 @@
 - YAML config support (`template_vars`)
 - Tests covering template rendering, missing variables, and CLI integration
 
-## M38: Benchmark Presets Library
+## M38: Benchmark Presets Library ✅
 - `xpyd-bench presets list` to show built-in and user-defined presets
 - `xpyd-bench presets show <name>` to display preset configuration
 - `--preset <name>` as shorthand for common benchmark configurations
