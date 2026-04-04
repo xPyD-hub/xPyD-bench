@@ -601,13 +601,22 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             retry_delay=req_retry_delay,
         )
 
-    # Rich progress bar
-    use_rich = getattr(args, "rich_progress", False) and not args.disable_tqdm
+    # Live dashboard (M29) — use LiveDashboard when not explicitly disabled
+    no_live = getattr(args, "no_live", False)
+    use_live = not args.disable_tqdm and not no_live
     reporter = None
-    if use_rich:
-        from xpyd_bench.reporting.rich_output import RichProgressReporter
+    _LiveDashboardType: type = type(None)  # sentinel for isinstance check
+    if use_live:
+        from xpyd_bench.reporting.rich_output import LiveDashboard
 
-        reporter = RichProgressReporter(total=args.num_prompts)
+        _LiveDashboardType = LiveDashboard
+        reporter = LiveDashboard(total=args.num_prompts)
+    elif not args.disable_tqdm and not no_live:
+        use_rich = getattr(args, "rich_progress", False)
+        if use_rich:
+            from xpyd_bench.reporting.rich_output import RichProgressReporter
+
+            reporter = RichProgressReporter(total=args.num_prompts)
 
     # --- Warmup phase ---
     warmup_count = getattr(args, "warmup", 0) or 0
@@ -653,7 +662,11 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         if debug_logger:
             debug_logger.log(url, payload, r)
         if reporter:
-            reporter.advance(success=r.success)
+            latency = r.latency * 1000 if r.latency is not None else None
+            if isinstance(reporter, _LiveDashboardType):
+                reporter.advance(success=r.success, latency_ms=latency)
+            else:
+                reporter.advance(success=r.success)
         return r
 
     grace_period = getattr(args, "shutdown_grace_period", 5.0) or 5.0
@@ -687,7 +700,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             task = asyncio.create_task(_tracked_task(client, prompt))
             tasks.append(task)
 
-            if not use_rich and not args.disable_tqdm and (i + 1) % 100 == 0:
+            if not reporter and not args.disable_tqdm and (i + 1) % 100 == 0:
                 print(f"  Launched {i + 1}/{args.num_prompts} requests...")
 
         # Wait for all launched tasks to complete (with grace period if shutting down)

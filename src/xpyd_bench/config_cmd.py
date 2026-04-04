@@ -48,6 +48,7 @@ _KNOWN_KEYS: set[str] = {
     "metadata",
     "model",
     "n",
+    "no_live",
     "num_prompts",
     "output_len",
     "parallel_tool_calls",
