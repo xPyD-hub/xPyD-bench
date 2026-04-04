@@ -259,3 +259,27 @@
 - JSON metrics pushed every second during benchmark
 - External dashboards (Grafana, custom) can subscribe
 - Tests covering WebSocket server and metric streaming
+
+## M34: Prometheus / OpenMetrics Export
+- `--prometheus-export <path>` CLI flag to write metrics in Prometheus exposition format
+- Metrics: `xpyd_bench_ttft_seconds`, `xpyd_bench_tpot_seconds`, `xpyd_bench_request_latency_seconds` (histograms)
+- Metrics: `xpyd_bench_throughput_tokens_per_second` (gauge), `xpyd_bench_requests_total`, `xpyd_bench_errors_total` (counters)
+- Labels: model, endpoint, scenario (if applicable)
+- YAML config support (`prometheus_export`)
+- Compatible with `node_exporter` textfile collector and `promtool check metrics`
+- Tests covering export format, histogram buckets, label injection, and CLI integration
+
+## M35: Request Latency Heatmap
+- Time-bucketed latency heatmap visualization in terminal (rich) and HTML report
+- X-axis: benchmark elapsed time, Y-axis: latency buckets
+- Color intensity: request count per bucket
+- `--heatmap` flag to enable terminal heatmap after benchmark
+- Automatically included in HTML report when `--html-report` is used
+- Tests covering heatmap data generation and rendering
+
+## M36: Benchmark Annotations & Tags
+- `--tag key=value` CLI flag (repeatable) to attach metadata tags to benchmark runs
+- Tags stored in result JSON `tags` field
+- `xpyd-bench history --filter-tag env=prod` to filter history by tags
+- YAML config support (`tags: {env: prod, gpu: A100}`)
+- Tests covering tag storage, filtering, and CLI integration

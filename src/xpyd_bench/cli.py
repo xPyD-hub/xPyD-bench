@@ -520,6 +520,13 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Export an interactive HTML report dashboard.",
     )
     reporting.add_argument(
+        "--prometheus-export",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Export metrics in Prometheus text exposition format.",
+    )
+    reporting.add_argument(
         "--debug-log",
         type=str,
         default=None,
@@ -881,6 +888,14 @@ def bench_main(argv: list[str] | None = None) -> None:
 
         p = export_html_report(bench_result, args.html_report)
         print(f"\nHTML report saved to {p}")
+
+    # Prometheus export (M34)
+    if getattr(args, "prometheus_export", None):
+        from xpyd_bench.reporting.prometheus import export_prometheus
+
+        scenario = getattr(args, "scenario", None)
+        p = export_prometheus(bench_result, args.prometheus_export, scenario)
+        print(f"\nPrometheus metrics saved to {p}")
 
     # Debug log notification (M22)
     if getattr(args, "debug_log", None):
