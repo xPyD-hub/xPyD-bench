@@ -239,3 +239,23 @@
 - Trend visualization: metric trends across recent runs (terminal sparklines)
 - YAML config support (`result_dir`)
 - Tests covering auto-save, history listing, and trend computation
+
+## M31: Plugin Architecture for Custom Backends
+- Plugin interface for registering custom backend protocols (beyond OpenAI)
+- `--backend custom --backend-plugin <module>` CLI integration
+- Example plugin for vLLM native protocol
+- Plugin discovery via entry points (`xpyd.backends`)
+- Tests covering plugin registration, loading, and execution
+
+## M32: Distributed Benchmark Coordination
+- `xpyd-bench distributed --workers worker1:8080,worker2:8080` for multi-machine load generation
+- Coordinator node distributes prompts across workers
+- Aggregated results from all workers
+- Worker heartbeat and failure detection
+- Tests covering coordination protocol and result aggregation
+
+## M33: Real-time Metrics Streaming (WebSocket)
+- `--metrics-ws-port <port>` to expose live metrics via WebSocket
+- JSON metrics pushed every second during benchmark
+- External dashboards (Grafana, custom) can subscribe
+- Tests covering WebSocket server and metric streaming
