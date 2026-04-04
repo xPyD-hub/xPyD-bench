@@ -12,7 +12,7 @@ from xpyd_bench.dummy.server import ServerConfig, create_app
 
 @pytest.fixture
 def client():
-    config = ServerConfig(prefill_ms=0, decode_ms=0, model_name="test-model")
+    config = ServerConfig(prefill_ms=0, decode_ms=0, model_name="test-model", eos_min_ratio=1.0)
     app = create_app(config)
     return TestClient(app)
 

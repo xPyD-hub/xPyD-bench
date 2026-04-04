@@ -22,6 +22,7 @@ def app():
         prefill_ms=0,
         decode_ms=0,
         max_tokens_default=3,
+        eos_min_ratio=1.0,
     )
     return create_app(config)
 

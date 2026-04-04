@@ -23,6 +23,7 @@ class ServerConfig:
     decode_ms: float = 10.0  # Simulated per-token decode latency
     model_name: str = "dummy-model"
     max_tokens_default: int = 128
+    eos_min_ratio: float = 0.5  # EOS won't fire before this fraction of max_tokens
 
 
 # Global config — set before starting the server
@@ -168,6 +169,19 @@ def _make_logprobs_data(token: str, num_logprobs: int = 1) -> dict:
     }
 
 
+def _eos_index(max_tokens: int, ignore_eos: bool = False) -> int | None:
+    """Return the 0-based token index at which to emit EOS, or None to skip.
+
+    Uses ``_config.eos_min_ratio`` to set the lower bound.  When
+    *ignore_eos* is ``True`` the model should produce all *max_tokens*
+    so we return ``None``.
+    """
+    if ignore_eos or max_tokens <= 0:
+        return None
+    lo = max(1, int(max_tokens * _config.eos_min_ratio))
+    return random.randint(lo, max_tokens)  # inclusive; max_tokens means "no early stop"
+
+
 def _check_stop(text: str, stop: list[str] | str | None) -> tuple[bool, str]:
     """Check if any stop sequence is found in text.
 
@@ -220,6 +234,7 @@ async def _handle_completions(request: Request) -> JSONResponse | StreamingRespo
     echo = body.get("echo", False)
     stop = body.get("stop")
     logprobs_count = body.get("logprobs")  # int or None
+    ignore_eos = body.get("ignore_eos", False)
     stream_options = body.get("stream_options") or {}
     include_usage = stream_options.get("include_usage", False)
     prompt_tokens = _estimate_prompt_tokens(prompt, None)
@@ -238,6 +253,7 @@ async def _handle_completions(request: Request) -> JSONResponse | StreamingRespo
                 logprobs_count=logprobs_count,
                 include_usage=include_usage,
                 seed=seed,
+                ignore_eos=ignore_eos,
             ),
             media_type="text/event-stream",
         )
@@ -249,8 +265,10 @@ async def _handle_completions(request: Request) -> JSONResponse | StreamingRespo
     choices = []
     total_completion_tokens = 0
     for i in range(n):
-        generated_text = " ".join(["token"] * max_tokens)
-        finish_reason = "length"
+        eos_idx = _eos_index(max_tokens, ignore_eos)
+        actual_tokens = eos_idx if eos_idx is not None and eos_idx < max_tokens else max_tokens
+        generated_text = " ".join(["token"] * actual_tokens)
+        finish_reason = "stop" if (eos_idx is not None and eos_idx < max_tokens) else "length"
         stopped, generated_text = _check_stop(generated_text, stop)
         if stopped:
             finish_reason = "stop"
@@ -314,6 +332,7 @@ async def _stream_completions(
     logprobs_count: int | None = None,
     include_usage: bool = False,
     seed: int | None = None,
+    ignore_eos: bool = False,
 ):
     """Generate SSE stream for completions endpoint."""
     comp_id = _make_completion_id()
@@ -325,6 +344,9 @@ async def _stream_completions(
     total_completion_tokens = 0
 
     for choice_idx in range(n):
+        eos_idx = _eos_index(max_tokens, ignore_eos)
+        effective_max = eos_idx if eos_idx is not None and eos_idx < max_tokens else max_tokens
+
         # Echo prefix as first chunk if requested
         if echo and prompt_text:
             chunk: dict = {
@@ -346,8 +368,8 @@ async def _stream_completions(
 
         accumulated = ""
         stopped = False
-        for i in range(max_tokens):
-            token_text = "token " if i < max_tokens - 1 else "token"
+        for i in range(effective_max):
+            token_text = "token " if i < effective_max - 1 else "token"
             accumulated += token_text
 
             # Check stop sequences
@@ -379,11 +401,15 @@ async def _stream_completions(
                     yield f"data: {json.dumps(chunk)}\n\n"
                     break
 
-            is_last = i == max_tokens - 1
+            is_last = i == effective_max - 1
+            is_eos = effective_max < max_tokens and is_last
+            finish_reason: str | None = None
+            if is_last:
+                finish_reason = "stop" if is_eos else "length"
             choice_data = {
                 "index": choice_idx,
                 "text": token_text,
-                "finish_reason": "length" if is_last else None,
+                "finish_reason": finish_reason,
             }
             if logprobs_count is not None:
                 choice_data["logprobs"] = _make_logprobs_data(token_text, logprobs_count)
@@ -403,7 +429,7 @@ async def _stream_completions(
             await asyncio.sleep(_config.decode_ms / 1000.0)
 
         if not stopped:
-            total_completion_tokens += max_tokens
+            total_completion_tokens += effective_max
 
     # Include usage chunk if requested
     if include_usage:
@@ -460,6 +486,7 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
     stop = body.get("stop")
     logprobs = body.get("logprobs", False)
     top_logprobs = body.get("top_logprobs")
+    ignore_eos = body.get("ignore_eos", False)
     stream_options = body.get("stream_options") or {}
     include_usage = stream_options.get("include_usage", False)
     prompt_tokens = _estimate_prompt_tokens(None, messages)
@@ -476,6 +503,7 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
                 top_logprobs=top_logprobs,
                 include_usage=include_usage,
                 seed=seed,
+                ignore_eos=ignore_eos,
             ),
             media_type="text/event-stream",
         )
@@ -487,8 +515,10 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
     choices = []
     total_completion_tokens = 0
     for i in range(n):
-        generated_text = " ".join(["token"] * max_tokens)
-        finish_reason = "length"
+        eos_idx = _eos_index(max_tokens, ignore_eos)
+        actual_tokens = eos_idx if eos_idx is not None and eos_idx < max_tokens else max_tokens
+        generated_text = " ".join(["token"] * actual_tokens)
+        finish_reason = "stop" if (eos_idx is not None and eos_idx < max_tokens) else "length"
         stopped, generated_text = _check_stop(generated_text, stop)
         if stopped:
             finish_reason = "stop"
@@ -539,6 +569,7 @@ async def _stream_chat_completions(
     top_logprobs: int | None = None,
     include_usage: bool = False,
     seed: int | None = None,
+    ignore_eos: bool = False,
 ):
     """Generate SSE stream for chat completions endpoint."""
     comp_id = _make_chat_completion_id()
@@ -550,6 +581,9 @@ async def _stream_chat_completions(
     total_completion_tokens = 0
 
     for choice_idx in range(n):
+        eos_idx = _eos_index(max_tokens, ignore_eos)
+        effective_max = eos_idx if eos_idx is not None and eos_idx < max_tokens else max_tokens
+
         # Emit initial chunk with role for each choice (OpenAI spec)
         role_chunk: dict = {
             "id": comp_id,
@@ -571,8 +605,8 @@ async def _stream_chat_completions(
 
         accumulated = ""
         stopped = False
-        for i in range(max_tokens):
-            token_text = "token " if i < max_tokens - 1 else "token"
+        for i in range(effective_max):
+            token_text = "token " if i < effective_max - 1 else "token"
             accumulated += token_text
 
             # Check stop sequences
@@ -604,12 +638,16 @@ async def _stream_chat_completions(
                     yield f"data: {json.dumps(chunk)}\n\n"
                     break
 
-            is_last = i == max_tokens - 1
+            is_last = i == effective_max - 1
+            is_eos = effective_max < max_tokens and is_last
+            finish_reason: str | None = None
+            if is_last:
+                finish_reason = "stop" if is_eos else "length"
             delta = {"content": token_text}
             choice_data = {
                 "index": choice_idx,
                 "delta": delta,
-                "finish_reason": "length" if is_last else None,
+                "finish_reason": finish_reason,
             }
             if logprobs and top_logprobs is not None:
                 choice_data["logprobs"] = {
@@ -631,9 +669,9 @@ async def _stream_chat_completions(
             await asyncio.sleep(_config.decode_ms / 1000.0)
 
         if not stopped:
-            total_completion_tokens += max_tokens
+            total_completion_tokens += effective_max
 
-    # Include usage chunk if requested
+    # Include usage chunk if requested (chat)
     if include_usage:
         usage_chunk = {
             "id": comp_id,
