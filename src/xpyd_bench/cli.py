@@ -17,8 +17,19 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         "--backend",
         type=str,
         default="openai",
-        choices=["openai", "openai-chat"],
-        help="Backend type (default: openai).",
+        help="Backend type (default: openai). Use --list-backends to see available.",
+    )
+    parser.add_argument(
+        "--backend-plugin",
+        type=str,
+        default=None,
+        help="Dotted module path for a custom backend plugin (e.g. my_pkg.my_backend).",
+    )
+    parser.add_argument(
+        "--list-backends",
+        action="store_true",
+        default=False,
+        help="List available backend plugins and exit.",
     )
     parser.add_argument(
         "--base-url",
@@ -731,6 +742,27 @@ def bench_main(argv: list[str] | None = None) -> None:
     )
     _add_vllm_compat_args(parser)
     args = parser.parse_args(argv)
+
+    # List backends and exit
+    if getattr(args, "list_backends", False):
+        from xpyd_bench.plugins import registry
+
+        backends = registry.list_backends()
+        print("Available backends:\n")
+        for b in backends:
+            print(f"  {b}")
+        print(
+            "\nUse --backend <name> to select a backend, or "
+            "--backend-plugin <module> to load a custom one."
+        )
+        return
+
+    # Load custom backend plugin if specified
+    backend_plugin_module = getattr(args, "backend_plugin", None)
+    if backend_plugin_module:
+        from xpyd_bench.plugins import registry
+
+        registry.load_module_plugin(backend_plugin_module)
 
     # List scenarios and exit
     if args.list_scenarios:

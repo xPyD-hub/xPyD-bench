@@ -1,0 +1,1 @@
+"""Example plugins package."""

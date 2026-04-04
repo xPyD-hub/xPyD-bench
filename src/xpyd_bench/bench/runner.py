@@ -446,6 +446,18 @@ def _compute_metrics(result: BenchmarkResult) -> None:
 
 async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, BenchmarkResult]:
     """Execute the benchmark and return (result_dict, BenchmarkResult)."""
+    # Resolve backend plugin (M31)
+    backend_name = getattr(args, "backend", "openai")
+    use_plugin = False
+    plugin = None
+
+    # "openai" and "openai-chat" use the legacy code path for full backward compat
+    if backend_name not in ("openai", "openai-chat"):
+        from xpyd_bench.plugins import registry
+
+        plugin = registry.get(backend_name)
+        use_plugin = True
+
     is_chat = "chat" in args.endpoint
     is_embeddings = "embeddings" in args.endpoint
     # Use explicit --stream/--no-stream if provided; default to endpoint type for
@@ -456,7 +468,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         is_streaming = False
     else:
         is_streaming = stream_flag if stream_flag is not None else is_chat
-    url = f"{base_url}{args.endpoint}"
+    url = plugin.build_url(base_url, args) if use_plugin else f"{base_url}{args.endpoint}"
 
     # Build default headers (authentication + custom)
     headers: dict[str, str] = {}
@@ -572,34 +584,45 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     req_retries = getattr(args, "retries", 0) or 0
     req_retry_delay = getattr(args, "retry_delay", 1.0) or 1.0
 
+    def _mk_payload(prompt: str) -> dict[str, Any]:
+        if use_plugin:
+            return plugin.build_payload(
+                args, prompt, is_chat=is_chat, is_embeddings=is_embeddings
+            )
+        return _build_payload(args, prompt, is_chat, is_embeddings)
+
+    async def _do_send(
+        client: httpx.AsyncClient, payload: dict[str, Any]
+    ) -> RequestResult:
+        if use_plugin:
+            return await plugin.send_request(
+                client, url, payload,
+                is_streaming=is_streaming,
+                request_timeout=request_timeout,
+                retries=req_retries,
+                retry_delay=req_retry_delay,
+            )
+        return await _send_request(
+            client, url, payload, is_streaming,
+            request_timeout=request_timeout,
+            retries=req_retries,
+            retry_delay=req_retry_delay,
+        )
+
     async def _task(client: httpx.AsyncClient, prompt: str) -> RequestResult:
+        payload = _mk_payload(prompt)
         if adaptive_limiter:
             await adaptive_limiter.acquire()
             try:
-                r = await _send_request(
-                    client, url, _build_payload(args, prompt, is_chat, is_embeddings), is_streaming,
-                    request_timeout=request_timeout,
-                    retries=req_retries,
-                    retry_delay=req_retry_delay,
-                )
+                r = await _do_send(client, payload)
             finally:
                 adaptive_limiter.release()
             await adaptive_limiter.record_latency(r.latency_ms)
             return r
         if semaphore:
             async with semaphore:
-                return await _send_request(
-                    client, url, _build_payload(args, prompt, is_chat, is_embeddings), is_streaming,
-                    request_timeout=request_timeout,
-                    retries=req_retries,
-                    retry_delay=req_retry_delay,
-                )
-        return await _send_request(
-            client, url, _build_payload(args, prompt, is_chat, is_embeddings), is_streaming,
-            request_timeout=request_timeout,
-            retries=req_retries,
-            retry_delay=req_retry_delay,
-        )
+                return await _do_send(client, payload)
+        return await _do_send(client, payload)
 
     # Live dashboard (M29) — use LiveDashboard when not explicitly disabled
     no_live = getattr(args, "no_live", False)
@@ -657,7 +680,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     shutdown_requested = False
 
     async def _tracked_task(client: httpx.AsyncClient, prompt: str) -> RequestResult:
-        payload = _build_payload(args, prompt, is_chat, is_embeddings)
+        payload = _mk_payload(prompt)
         r = await _task(client, prompt)
         if debug_logger:
             debug_logger.log(url, payload, r)
