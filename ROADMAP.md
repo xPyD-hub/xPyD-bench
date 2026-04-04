@@ -134,7 +134,7 @@
 - YAML config support (`html_report`)
 - Tests covering HTML generation, file content validation, and CLI integration
 
-## M18: Profile & Replay Mode
+## M18: Profile & Replay Mode ✅
 - `xpyd-bench profile --output trace.json` to record request timing patterns from a live endpoint
 - `xpyd-bench replay --trace trace.json --base-url <url>` to replay recorded patterns
 - Trace format captures: timestamps, prompt lengths, endpoint, inter-request delays

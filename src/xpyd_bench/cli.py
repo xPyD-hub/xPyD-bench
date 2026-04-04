@@ -742,6 +742,190 @@ def multi_main(argv: list[str] | None = None) -> None:
         raise SystemExit(1)
 
 
+def profile_main(argv: list[str] | None = None) -> None:
+    """Entry point for ``xpyd-bench-profile`` command.
+
+    Runs a benchmark and records a request timing trace to a JSON file.
+    """
+    from xpyd_bench.profile import TraceRecorder, save_trace
+
+    parser = argparse.ArgumentParser(
+        prog="xpyd-bench-profile",
+        description="Run a benchmark and record request timing trace",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        required=True,
+        metavar="PATH",
+        help="Output path for the trace JSON file.",
+    )
+    _add_vllm_compat_args(parser)
+    args = parser.parse_args(argv)
+
+    # Merge YAML config if provided
+    if args.config:
+        args = _load_yaml_config(args.config, args)
+
+    import os
+
+    if args.api_key is None:
+        args.api_key = os.environ.get("OPENAI_API_KEY")
+    args.custom_headers = _resolve_custom_headers(args)
+
+    base_url = _resolve_base_url(args)
+    args.base_url = base_url
+
+    from xpyd_bench import __version__
+    from xpyd_bench.bench.runner import run_benchmark
+    from xpyd_bench.datasets.loader import load_dataset
+
+    print(f"xpyd-bench-profile v{__version__}")
+    print(f"  Base URL: {base_url}")
+    print(f"  Output:   {args.output}")
+    print()
+
+    # Create recorder
+    recorder = TraceRecorder(base_url=base_url)
+
+    # Load dataset
+    prompts = load_dataset(args)
+
+    # Record each prompt into the trace as we dispatch
+    recorder.start()
+    for p in prompts:
+        prompt_len = p.get("prompt_len", len(str(p.get("prompt", ""))))
+        recorder.record(
+            prompt_len=prompt_len,
+            output_len=getattr(args, "output_len", 128),
+            endpoint=args.endpoint,
+            model=args.model or "",
+            prompt=str(p.get("prompt", ""))[:200],  # truncate for trace
+            temperature=getattr(args, "temperature", 1.0),
+            max_tokens=getattr(args, "max_tokens", 128),
+            stream=getattr(args, "stream", True),
+        )
+
+    # Run the actual benchmark
+    bench_result, result = asyncio.run(run_benchmark(args))
+
+    # Finalize trace
+    trace = recorder.finish()
+    trace_path = save_trace(trace, args.output)
+    print(f"\nTrace saved to {trace_path} ({trace.num_entries} entries)")
+
+
+def replay_main(argv: list[str] | None = None) -> None:
+    """Entry point for ``xpyd-bench-replay`` command.
+
+    Replays a recorded trace against a target server.
+    """
+    import os
+
+    from xpyd_bench.profile import compute_delays, load_trace
+
+    parser = argparse.ArgumentParser(
+        prog="xpyd-bench-replay",
+        description="Replay a recorded request timing trace against a server",
+    )
+    parser.add_argument(
+        "--trace",
+        type=str,
+        required=True,
+        metavar="PATH",
+        help="Path to the trace JSON file.",
+    )
+    parser.add_argument(
+        "--base-url",
+        type=str,
+        required=True,
+        help="Target server base URL.",
+    )
+    parser.add_argument(
+        "--speed",
+        type=float,
+        default=1.0,
+        help="Replay speed multiplier (default: 1.0). "
+        "2.0 = 2x faster, 0.5 = half speed.",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        help="Override model name from trace.",
+    )
+    parser.add_argument(
+        "--api-key",
+        type=str,
+        default=None,
+        help="API key for authentication.",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=300.0,
+        help="Per-request timeout in seconds (default: 300).",
+    )
+    parser.add_argument(
+        "--save-result",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Save benchmark result JSON to this path.",
+    )
+    args = parser.parse_args(argv)
+
+    if args.api_key is None:
+        args.api_key = os.environ.get("OPENAI_API_KEY")
+
+    from xpyd_bench import __version__
+
+    print(f"xpyd-bench-replay v{__version__}")
+
+    trace = load_trace(args.trace)
+    print(f"  Trace:    {args.trace} ({trace.num_entries} entries)")
+    print(f"  Original: {trace.base_url} ({trace.total_duration_s:.1f}s)")
+    print(f"  Target:   {args.base_url}")
+    print(f"  Speed:    {args.speed}x")
+    print()
+
+    delays = compute_delays(trace, speed=args.speed)
+    model = args.model or (trace.entries[0].model if trace.entries else "")
+
+    # Build requests and replay with timing
+    from xpyd_bench.bench.runner import replay_trace
+
+    bench_result = asyncio.run(
+        replay_trace(
+            trace=trace,
+            delays=delays,
+            base_url=args.base_url,
+            model=model,
+            api_key=args.api_key,
+            timeout=args.timeout,
+        )
+    )
+
+    # Print summary
+    print(f"\n{'='*60}")
+    print(f"Replay complete: {bench_result.completed}/{bench_result.num_prompts} succeeded")
+    print(f"Total duration:  {bench_result.total_duration_s:.2f}s")
+    print(f"Throughput:      {bench_result.request_throughput:.2f} req/s")
+    if bench_result.mean_ttft_ms > 0:
+        print(f"Mean TTFT:       {bench_result.mean_ttft_ms:.2f}ms")
+    if bench_result.mean_e2el_ms > 0:
+        print(f"Mean E2E:        {bench_result.mean_e2el_ms:.2f}ms")
+
+    if args.save_result:
+        from dataclasses import asdict
+
+        p = Path(args.save_result)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with open(p, "w") as f:
+            json.dump(asdict(bench_result), f, indent=2, default=str)
+        print(f"\nResult saved to {p}")
+
+
 def _save_result(args: argparse.Namespace, result: dict) -> None:
     """Save benchmark result to JSON."""
     from datetime import datetime
