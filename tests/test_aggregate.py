@@ -35,6 +35,11 @@ def _make_result(
         "p90_tpot_ms": mean_tpot * 1.5,
         "p95_tpot_ms": mean_tpot * 1.8,
         "p99_tpot_ms": mean_tpot * 2.0,
+        "mean_itl_ms": mean_tpot * 0.8,
+        "p50_itl_ms": mean_tpot * 0.7,
+        "p90_itl_ms": mean_tpot * 1.2,
+        "p95_itl_ms": mean_tpot * 1.5,
+        "p99_itl_ms": mean_tpot * 1.8,
         "mean_e2el_ms": 200.0,
         "p50_e2el_ms": 180.0,
         "p90_e2el_ms": 250.0,
@@ -96,6 +101,14 @@ class TestAggregateResults:
         assert agg.num_runs == 2
         assert "request_throughput" in agg.metrics
         assert abs(agg.metrics["request_throughput"].mean - 11.0) < 0.01
+
+    def test_itl_metrics_included(self):
+        """ITL percentile metrics must be aggregated (issue #81)."""
+        r1 = _make_result(mean_tpot=20.0)
+        r2 = _make_result(mean_tpot=25.0)
+        agg = aggregate_results([r1, r2])
+        for key in ("mean_itl_ms", "p50_itl_ms", "p90_itl_ms", "p95_itl_ms", "p99_itl_ms"):
+            assert key in agg.metrics, f"{key} missing from aggregated metrics"
 
     def test_to_dict(self):
         r1 = _make_result()
