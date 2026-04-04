@@ -242,6 +242,8 @@ async def _send_streaming(
         result.prompt_tokens = stream_usage.get("prompt_tokens", 0)
         if stream_usage.get("completion_tokens"):
             result.completion_tokens = stream_usage["completion_tokens"]
+            # Use server-reported token count for TPOT when available
+            token_count = stream_usage["completion_tokens"]
     if token_count > 1 and first_token_time is not None:
         generation_time_ms = (last_token_time - first_token_time) * 1000.0
         result.tpot_ms = generation_time_ms / (token_count - 1)
