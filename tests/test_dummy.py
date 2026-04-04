@@ -94,9 +94,11 @@ class TestChatCompletions:
                     break
                 chunks.append(json.loads(data))
 
-        assert len(chunks) == 3
+        assert len(chunks) == 4  # 1 role chunk + 3 content chunks
+        # First chunk has role: assistant
         assert chunks[0]["object"] == "chat.completion.chunk"
-        assert "delta" in chunks[0]["choices"][0]
+        assert chunks[0]["choices"][0]["delta"]["role"] == "assistant"
+        assert "delta" in chunks[1]["choices"][0]
 
 
 class TestUsageStats:

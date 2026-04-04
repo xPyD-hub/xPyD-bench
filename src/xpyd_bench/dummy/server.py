@@ -364,6 +364,8 @@ async def _stream_completions(
                         choice_data["logprobs"] = _make_logprobs_data(
                             token_text, logprobs_count
                         )
+                    else:
+                        choice_data["logprobs"] = None
                     chunk = {
                         "id": comp_id,
                         "object": "text_completion",
@@ -385,6 +387,8 @@ async def _stream_completions(
             }
             if logprobs_count is not None:
                 choice_data["logprobs"] = _make_logprobs_data(token_text, logprobs_count)
+            else:
+                choice_data["logprobs"] = None
 
             chunk = {
                 "id": comp_id,
@@ -546,6 +550,25 @@ async def _stream_chat_completions(
     total_completion_tokens = 0
 
     for choice_idx in range(n):
+        # Emit initial chunk with role for each choice (OpenAI spec)
+        role_chunk: dict = {
+            "id": comp_id,
+            "object": "chat.completion.chunk",
+            "created": created,
+            "model": model,
+            "choices": [
+                {
+                    "index": choice_idx,
+                    "delta": {"role": "assistant", "content": ""},
+                    "logprobs": None,
+                    "finish_reason": None,
+                }
+            ],
+        }
+        if seed is not None:
+            role_chunk["system_fingerprint"] = f"fp_seed_{seed}"
+        yield f"data: {json.dumps(role_chunk)}\n\n"
+
         accumulated = ""
         stopped = False
         for i in range(max_tokens):
@@ -566,6 +589,8 @@ async def _stream_chat_completions(
                         choice_data["logprobs"] = {
                             "content": [_make_logprobs_data(token_text, top_logprobs)]
                         }
+                    else:
+                        choice_data["logprobs"] = None
                     chunk: dict = {
                         "id": comp_id,
                         "object": "chat.completion.chunk",
@@ -590,6 +615,8 @@ async def _stream_chat_completions(
                 choice_data["logprobs"] = {
                     "content": [_make_logprobs_data(token_text, top_logprobs)]
                 }
+            else:
+                choice_data["logprobs"] = None
 
             chunk = {
                 "id": comp_id,
