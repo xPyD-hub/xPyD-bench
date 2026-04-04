@@ -178,6 +178,14 @@
 - Tests covering log file creation and content
 
 ## M23: Configuration Dump & Validation ✅
+
+## M24: Unified CLI Subcommand Interface
+- Single `xpyd-bench <subcommand>` entry point with subcommand routing
+- Subcommands: `run`, `compare`, `multi`, `profile`, `replay`, `config dump`, `config validate`
+- `xpyd-bench` with no subcommand defaults to `run` for backward compatibility
+- `--version` flag prints package version
+- Legacy standalone entry points still work but print deprecation warning
+- Tests covering subcommand routing, backward compat, version flag, deprecation warnings
 - `xpyd-bench config dump` subcommand to print resolved configuration (CLI + YAML merged)
 - `xpyd-bench config validate --config <path>` to validate YAML config without running
 - Print warnings for deprecated or conflicting options
