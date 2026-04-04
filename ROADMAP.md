@@ -284,7 +284,7 @@
 - YAML config support (`tags: {env: prod, gpu: A100}`)
 - Tests covering tag storage, filtering, and CLI integration
 
-## M37: Request Body Templating
+## M37: Request Body Templating ✅
 - Jinja2-style template variables in prompt strings (`{{ variable }}`)
 - `--template-vars <path>` to load variables from JSON/YAML file
 - Variable substitution applied before sending requests
