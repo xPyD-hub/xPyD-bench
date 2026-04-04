@@ -1,0 +1,8 @@
+# Example: Burst pattern — 10 requests instantly, 3s pause, repeat
+rate_pattern:
+  type: burst
+  burst_size: 10
+  burst_interval: 3.0
+
+num_prompts: 100
+output_len: 64

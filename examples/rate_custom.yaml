@@ -1,0 +1,8 @@
+# Example: Custom per-second rate schedule (repeating)
+# Second 1: 5 req/s, Second 2: idle, Second 3: 20 req/s, ...
+rate_pattern:
+  type: custom
+  schedule: [5.0, 0.0, 20.0, 10.0]
+
+num_prompts: 200
+output_len: 64

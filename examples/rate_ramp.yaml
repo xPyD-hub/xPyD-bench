@@ -1,0 +1,13 @@
+# Example: Ramp-up from 5 req/s to 50 req/s over 20 seconds
+rate_pattern:
+  type: ramp
+  stages:
+    - rate: 5.0
+      duration: 5.0
+    - rate: 20.0
+      duration: 10.0
+    - rate: 50.0
+      duration: 5.0
+
+num_prompts: 500
+output_len: 64
