@@ -441,7 +441,31 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         # Override num_prompts to match actual dataset size
         args.num_prompts = len(prompts)
     else:
-        prompts = _generate_random_prompts(args.num_prompts, args.input_len, args.seed)
+        dataset_name = getattr(args, "dataset_name", "random")
+        input_dist = getattr(args, "synthetic_input_len_dist", "fixed")
+        output_dist = getattr(args, "synthetic_output_len_dist", "fixed")
+        if (
+            dataset_name == "synthetic"
+            or input_dist != "fixed"
+            or output_dist != "fixed"
+        ):
+            from xpyd_bench.datasets.loader import load_dataset, validate_and_report
+
+            entries = load_dataset(
+                path=None,
+                name=dataset_name,
+                num_prompts=args.num_prompts,
+                input_len=args.input_len,
+                output_len=args.output_len,
+                input_len_dist=input_dist,
+                output_len_dist=output_dist,
+                seed=args.seed,
+            )
+            validate_and_report(entries, f"synthetic ({dataset_name})")
+            prompts = [e.prompt for e in entries]
+            args.num_prompts = len(prompts)
+        else:
+            prompts = _generate_random_prompts(args.num_prompts, args.input_len, args.seed)
 
     # Generate inter-arrival intervals
     rate_algorithm = getattr(args, "rate_algorithm", "default")
