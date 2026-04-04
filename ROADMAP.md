@@ -151,3 +151,13 @@
 - YAML config support (`dry_run: true`)
 - Works with all existing CLI flags (scenarios, custom headers, auth, etc.)
 - Tests covering dry-run output, validation errors, and CLI integration
+
+## M20: SLA Validation Mode
+- `--sla <path>` CLI flag to load SLA targets from a YAML file
+- SLA file defines thresholds: max P99 TTFT, max P95 e2e latency, min throughput, max error rate
+- After benchmark completes, validate results against SLA targets
+- Print pass/fail for each SLA target with actual vs threshold
+- Exit code 1 when any SLA target is violated (CI-friendly)
+- JSON output includes `sla_results` section with per-target pass/fail
+- YAML config support (`sla: <path>`)
+- Tests covering SLA pass, SLA fail, partial SLA, missing metrics
