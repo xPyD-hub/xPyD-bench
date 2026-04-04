@@ -1,7 +1,9 @@
-"""Report format generators — JSON and human-readable text."""
+"""Report format generators — JSON, text, CSV, and Markdown."""
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 from pathlib import Path
 from typing import Any
@@ -97,3 +99,110 @@ def format_text_report(result: BenchmarkResult) -> str:
     lines.append("  " + "-" * 66)
     lines.append("=" * 70)
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Summary column definitions (shared by CSV and Markdown)
+# ---------------------------------------------------------------------------
+
+_SUMMARY_COLUMNS = [
+    ("backend", lambda r: r.backend),
+    ("model", lambda r: r.model),
+    ("num_prompts", lambda r: r.num_prompts),
+    ("completed", lambda r: r.completed),
+    ("failed", lambda r: r.failed),
+    ("total_duration_s", lambda r: f"{r.total_duration_s:.2f}"),
+    ("request_throughput", lambda r: f"{r.request_throughput:.2f}"),
+    ("output_throughput", lambda r: f"{r.output_throughput:.2f}"),
+    ("total_token_throughput", lambda r: f"{r.total_token_throughput:.2f}"),
+    ("mean_ttft_ms", lambda r: f"{r.mean_ttft_ms:.2f}"),
+    ("p50_ttft_ms", lambda r: f"{r.p50_ttft_ms:.2f}"),
+    ("p90_ttft_ms", lambda r: f"{r.p90_ttft_ms:.2f}"),
+    ("p95_ttft_ms", lambda r: f"{r.p95_ttft_ms:.2f}"),
+    ("p99_ttft_ms", lambda r: f"{r.p99_ttft_ms:.2f}"),
+    ("mean_tpot_ms", lambda r: f"{r.mean_tpot_ms:.2f}"),
+    ("p50_tpot_ms", lambda r: f"{r.p50_tpot_ms:.2f}"),
+    ("p90_tpot_ms", lambda r: f"{r.p90_tpot_ms:.2f}"),
+    ("p95_tpot_ms", lambda r: f"{r.p95_tpot_ms:.2f}"),
+    ("p99_tpot_ms", lambda r: f"{r.p99_tpot_ms:.2f}"),
+    ("mean_itl_ms", lambda r: f"{r.mean_itl_ms:.2f}"),
+    ("p50_itl_ms", lambda r: f"{r.p50_itl_ms:.2f}"),
+    ("p90_itl_ms", lambda r: f"{r.p90_itl_ms:.2f}"),
+    ("p95_itl_ms", lambda r: f"{r.p95_itl_ms:.2f}"),
+    ("p99_itl_ms", lambda r: f"{r.p99_itl_ms:.2f}"),
+    ("mean_e2el_ms", lambda r: f"{r.mean_e2el_ms:.2f}"),
+    ("p50_e2el_ms", lambda r: f"{r.p50_e2el_ms:.2f}"),
+    ("p90_e2el_ms", lambda r: f"{r.p90_e2el_ms:.2f}"),
+    ("p95_e2el_ms", lambda r: f"{r.p95_e2el_ms:.2f}"),
+    ("p99_e2el_ms", lambda r: f"{r.p99_e2el_ms:.2f}"),
+]
+
+_PER_REQUEST_COLUMNS = [
+    "prompt_tokens",
+    "completion_tokens",
+    "ttft_ms",
+    "tpot_ms",
+    "latency_ms",
+    "success",
+    "error",
+    "retries",
+]
+
+
+def export_csv_report(result: BenchmarkResult, path: str | Path) -> Path:
+    """Export summary metrics as a single-row CSV with header.
+
+    Returns the written path.
+    """
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    headers = [col[0] for col in _SUMMARY_COLUMNS]
+    values = [str(col[1](result)) for col in _SUMMARY_COLUMNS]
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(headers)
+    writer.writerow(values)
+    p.write_text(buf.getvalue())
+    return p
+
+
+def export_markdown_report(result: BenchmarkResult, path: str | Path) -> Path:
+    """Export summary metrics as a Markdown table.
+
+    Returns the written path.
+    """
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    headers = [col[0] for col in _SUMMARY_COLUMNS]
+    values = [str(col[1](result)) for col in _SUMMARY_COLUMNS]
+    header_line = "| " + " | ".join(headers) + " |"
+    separator = "| " + " | ".join("---" for _ in headers) + " |"
+    data_line = "| " + " | ".join(values) + " |"
+    content = f"{header_line}\n{separator}\n{data_line}\n"
+    p.write_text(content)
+    return p
+
+
+def export_per_request_csv(result: BenchmarkResult, path: str | Path) -> Path:
+    """Export per-request detailed metrics as CSV.
+
+    Returns the written path.
+    """
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(_PER_REQUEST_COLUMNS)
+    for r in result.requests:
+        writer.writerow([
+            r.prompt_tokens,
+            r.completion_tokens,
+            r.ttft_ms if r.ttft_ms is not None else "",
+            r.tpot_ms if r.tpot_ms is not None else "",
+            r.latency_ms,
+            r.success,
+            r.error or "",
+            r.retries,
+        ])
+    p.write_text(buf.getvalue())
+    return p

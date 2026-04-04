@@ -94,9 +94,17 @@
 - Compare tool warns when comparing partial results
 - Tests covering graceful shutdown, partial metrics, and compare warnings
 
-## M13: Custom HTTP Headers
+## M13: Custom HTTP Headers ✅
 - `--header "Key: Value"` CLI flag (repeatable) for arbitrary HTTP headers
 - YAML config support (`headers: {"X-Custom": "value"}`)
 - Headers merged with internal headers (Authorization); user headers take precedence
 - Dummy server echoes received custom headers in response metadata for validation
 - Tests covering CLI parsing, header injection, YAML config, precedence, and dummy echo
+
+## M14: CSV & Markdown Export Formats
+- `--csv-report <path>` CLI flag to export summary metrics as CSV
+- `--markdown-report <path>` CLI flag to export summary as Markdown table
+- Per-request CSV export via `--export-requests-csv <path>`
+- YAML config support (`csv_report`, `markdown_report`, `export_requests_csv`)
+- Consistent column ordering across formats
+- Tests covering all export paths, file content validation, and CLI integration
