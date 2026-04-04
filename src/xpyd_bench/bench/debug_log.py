@@ -26,6 +26,8 @@ class DebugLogEntry:
     success: bool
     error: str | None = None
     retries: int = 0
+    payload_bytes: int | None = None
+    compressed_bytes: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {
@@ -40,6 +42,10 @@ class DebugLogEntry:
             d["error"] = self.error
         if self.retries > 0:
             d["retries"] = self.retries
+        if self.payload_bytes is not None:
+            d["payload_bytes"] = self.payload_bytes
+        if self.compressed_bytes is not None:
+            d["compressed_bytes"] = self.compressed_bytes
         return d
 
 
@@ -73,6 +79,8 @@ class DebugLogger:
         url: str,
         payload: dict[str, Any],
         result: RequestResult,
+        payload_bytes: int | None = None,
+        compressed_bytes: int | None = None,
     ) -> None:
         """Write one log entry for a completed request."""
         # Truncate payload
@@ -91,6 +99,8 @@ class DebugLogger:
             success=result.success,
             error=result.error,
             retries=result.retries,
+            payload_bytes=payload_bytes,
+            compressed_bytes=compressed_bytes,
         )
         self._file.write(json.dumps(entry.to_dict(), ensure_ascii=False) + "\n")
         self._file.flush()
