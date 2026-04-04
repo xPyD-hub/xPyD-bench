@@ -662,6 +662,83 @@ def _print_summary(r: BenchmarkResult) -> None:
     print("=" * 60)
 
 
+async def replay_trace(
+    trace: Any,
+    delays: list[float],
+    base_url: str,
+    model: str = "",
+    api_key: str | None = None,
+    timeout: float = 300.0,
+) -> BenchmarkResult:
+    """Replay a recorded trace against a target server.
+
+    Sends requests with the same inter-request timing as the original trace.
+
+    Args:
+        trace: TraceData object with recorded entries.
+        delays: Pre-computed inter-request delays in seconds.
+        base_url: Target server base URL.
+        model: Model name override.
+        api_key: Optional API key for authentication.
+        timeout: Per-request timeout in seconds.
+
+    Returns:
+        BenchmarkResult with metrics from the replay run.
+    """
+    headers: dict[str, str] = {}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    result = BenchmarkResult(
+        backend="openai",
+        base_url=base_url,
+        model=model,
+        num_prompts=len(trace.entries),
+    )
+
+    async with httpx.AsyncClient(headers=headers) as client:
+        start_time = time.perf_counter()
+
+        for i, entry in enumerate(trace.entries):
+            if i < len(delays) and delays[i] > 0:
+                await asyncio.sleep(delays[i])
+
+            url = base_url.rstrip("/") + entry.endpoint
+            is_chat = "chat" in entry.endpoint
+
+            if is_chat:
+                payload: dict[str, Any] = {
+                    "model": model or entry.model,
+                    "messages": [{"role": "user", "content": entry.prompt or "hello"}],
+                    "max_tokens": entry.max_tokens,
+                    "temperature": entry.temperature,
+                    "stream": entry.stream,
+                }
+            else:
+                payload = {
+                    "model": model or entry.model,
+                    "prompt": entry.prompt or "hello",
+                    "max_tokens": entry.max_tokens,
+                    "temperature": entry.temperature,
+                    "stream": entry.stream,
+                }
+
+            req_result = await _send_request(
+                client,
+                url,
+                payload,
+                is_streaming=entry.stream,
+                request_timeout=timeout,
+            )
+            result.requests.append(req_result)
+
+        end_time = time.perf_counter()
+        result.total_duration_s = end_time - start_time
+
+    _compute_metrics(result)
+    return result
+
+
 def _to_dict(r: BenchmarkResult) -> dict:
     """Convert BenchmarkResult to a JSON-serializable dict."""
     d: dict[str, Any] = {
