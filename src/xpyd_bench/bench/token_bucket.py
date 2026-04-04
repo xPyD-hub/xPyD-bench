@@ -105,8 +105,9 @@ class AdaptiveConcurrencyLimiter:
         self._decrease_factor = decrease_factor
         self._window_size = window_size
         self._latencies: list[float] = []
-        self._semaphore = asyncio.Semaphore(initial)
         self._lock = asyncio.Lock()
+        self._in_flight = 0
+        self._condition = asyncio.Condition(self._lock)
 
     @property
     def limit(self) -> int:
@@ -115,11 +116,25 @@ class AdaptiveConcurrencyLimiter:
 
     async def acquire(self) -> None:
         """Acquire a concurrency slot."""
-        await self._semaphore.acquire()
+        async with self._condition:
+            while self._in_flight >= self._limit:
+                await self._condition.wait()
+            self._in_flight += 1
 
     def release(self) -> None:
-        """Release a concurrency slot."""
-        self._semaphore.release()
+        """Release a concurrency slot.
+
+        Schedules waiters to be notified so new requests can proceed.
+        """
+        # Use the running loop to schedule the async notification.
+        loop = asyncio.get_running_loop()
+        loop.create_task(self._async_release())
+
+    async def _async_release(self) -> None:
+        """Decrement in-flight counter and wake a waiter."""
+        async with self._condition:
+            self._in_flight -= 1
+            self._condition.notify()
 
     async def record_latency(self, latency_ms: float) -> None:
         """Record a request latency and adjust concurrency."""
@@ -145,18 +160,5 @@ class AdaptiveConcurrencyLimiter:
 
             if new_limit != old_limit:
                 self._limit = new_limit
-                self._adjust_semaphore(old_limit, new_limit)
-
-    def _adjust_semaphore(self, old: int, new: int) -> None:
-        """Adjust semaphore capacity."""
-        diff = new - old
-        if diff > 0:
-            for _ in range(diff):
-                self._semaphore.release()
-        elif diff < 0:
-            # Reducing capacity: we acquire slots so fewer are available
-            # We do this by creating a new semaphore in practice,
-            # but for simplicity we just reduce the internal counter
-            # Note: can't easily shrink a semaphore, so we track limit
-            # and the acquire will naturally throttle
-            pass
+                # Notify waiters so they can re-check against the new limit
+                self._condition.notify_all()
