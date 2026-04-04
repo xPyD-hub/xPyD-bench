@@ -307,3 +307,27 @@
 - `--dry-run` shows estimated cost before running
 - YAML config support (`cost_model`)
 - Tests covering cost calculation, multiple models, and dry-run estimation
+
+## M40: Request Payload Compression ⬜
+- `--compress` CLI flag to enable gzip compression of request bodies (`Content-Encoding: gzip`)
+- Useful for large-prompt benchmarks to reduce network overhead
+- YAML config support (`compress: true`)
+- Dummy server supports `Content-Encoding: gzip` decompression
+- Metrics: track compressed vs uncompressed payload sizes in debug log
+- Tests covering compression encoding, dummy server decompression, and CLI integration
+
+## M41: Batch Inference API Benchmarking ⬜
+- Support `/v1/batch` endpoint for offline batch inference benchmarking
+- `xpyd-bench run --endpoint /v1/batch` with batch-specific metrics (queue time, processing time)
+- Batch submission, polling, and result retrieval workflow
+- Dummy server `/v1/batch` implementation
+- Tests covering batch submission, polling, result retrieval, and metrics
+
+## M42: Request ID Tracking & Correlation ⬜
+- Auto-generate unique `X-Request-ID` header for each request
+- `--request-id-prefix <prefix>` CLI flag for custom prefixes
+- Request IDs in debug log, per-request export, and error messages
+- Dummy server echoes `X-Request-ID` in response headers
+- Correlation between client-side and server-side logs
+- YAML config support (`request_id_prefix`)
+- Tests covering ID generation, header injection, echo, and export
