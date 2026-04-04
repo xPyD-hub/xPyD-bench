@@ -545,6 +545,12 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Use rich progress bar and summary table.",
     )
+    reporting.add_argument(
+        "--heatmap",
+        action="store_true",
+        default=False,
+        help="Display a latency heatmap in the terminal after the benchmark.",
+    )
 
 
 def _resolve_base_url(args: argparse.Namespace) -> str:
@@ -900,6 +906,14 @@ def bench_main(argv: list[str] | None = None) -> None:
     # Debug log notification (M22)
     if getattr(args, "debug_log", None):
         print(f"\nDebug log saved to {args.debug_log}")
+
+    # Terminal heatmap (M35)
+    if getattr(args, "heatmap", False):
+        from xpyd_bench.reporting.heatmap import compute_heatmap, render_terminal_heatmap
+
+        heatmap_data = compute_heatmap(bench_result)
+        print()
+        print(render_terminal_heatmap(heatmap_data))
 
     # Auto-save to result-dir when set (M30)
     if args.result_dir and not args.save_result:
