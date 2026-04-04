@@ -117,7 +117,7 @@
 - Reuse existing compare logic for pairwise regression detection
 - Tests covering multi-endpoint orchestration and output
 
-## M16: Token Bucket & Adaptive Concurrency
+## M16: Token Bucket & Adaptive Concurrency ✅
 - Token bucket rate limiter replacing simple sleep-based scheduling
 - `--rate-algorithm token-bucket` CLI flag (default preserves current behavior)
 - Adaptive concurrency: auto-adjust max in-flight requests based on server response latency
@@ -125,7 +125,7 @@
 - YAML config support for all new parameters
 - Tests covering rate accuracy, adaptive scaling up/down, and edge cases
 
-## M17: HTML Report Dashboard
+## M17: HTML Report Dashboard ✅
 - `--html-report <path>` CLI flag to generate a self-contained HTML report
 - Interactive charts: latency distribution histogram, throughput timeline, TTFT CDF
 - Embedded CSS/JS (no external dependencies, works offline)
