@@ -308,7 +308,7 @@
 - YAML config support (`cost_model`)
 - Tests covering cost calculation, multiple models, and dry-run estimation
 
-## M40: Request Payload Compression ⬜
+## M40: Request Payload Compression ✅
 - `--compress` CLI flag to enable gzip compression of request bodies (`Content-Encoding: gzip`)
 - Useful for large-prompt benchmarks to reduce network overhead
 - YAML config support (`compress: true`)
