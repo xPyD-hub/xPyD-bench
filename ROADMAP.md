@@ -247,7 +247,7 @@
 - Plugin discovery via entry points (`xpyd.backends`)
 - Tests covering plugin registration, loading, and execution
 
-## M32: Distributed Benchmark Coordination
+## M32: Distributed Benchmark Coordination ✅
 - `xpyd-bench distributed --workers worker1:8080,worker2:8080` for multi-machine load generation
 - Coordinator node distributes prompts across workers
 - Aggregated results from all workers
