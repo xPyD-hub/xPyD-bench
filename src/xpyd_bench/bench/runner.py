@@ -13,6 +13,7 @@ from typing import Any
 import httpx
 import numpy as np
 
+from xpyd_bench.bench.env import collect_env_info
 from xpyd_bench.bench.models import BenchmarkResult, RequestResult
 
 # ---------------------------------------------------------------------------
@@ -477,6 +478,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         max_concurrency=args.max_concurrency,
         input_len=args.input_len,
         output_len=args.output_len,
+        environment=collect_env_info(),
     )
 
     # Timeout & retry settings
@@ -694,6 +696,7 @@ async def replay_trace(
         base_url=base_url,
         model=model,
         num_prompts=len(trace.entries),
+        environment=collect_env_info(),
     )
 
     async with httpx.AsyncClient(headers=headers) as client:

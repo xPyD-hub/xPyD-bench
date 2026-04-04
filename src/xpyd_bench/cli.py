@@ -558,6 +558,16 @@ def _dry_run(args: argparse.Namespace, base_url: str) -> None:
 
     print()
     print("Dry run complete. Configuration is valid.")
+
+    # Environment info
+    from xpyd_bench.bench.env import collect_env_info
+
+    env = collect_env_info()
+    print()
+    print("Environment:")
+    for k, v in env.items():
+        print(f"  {k}: {v}")
+
     print(f"{'='*60}")
 
 
