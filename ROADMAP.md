@@ -277,9 +277,33 @@
 - Automatically included in HTML report when `--html-report` is used
 - Tests covering heatmap data generation and rendering
 
-## M36: Benchmark Annotations & Tags
+## M36: Benchmark Annotations & Tags ✅
 - `--tag key=value` CLI flag (repeatable) to attach metadata tags to benchmark runs
 - Tags stored in result JSON `tags` field
 - `xpyd-bench history --filter-tag env=prod` to filter history by tags
 - YAML config support (`tags: {env: prod, gpu: A100}`)
 - Tests covering tag storage, filtering, and CLI integration
+
+## M37: Request Body Templating
+- Jinja2-style template variables in prompt strings (`{{ variable }}`)
+- `--template-vars <path>` to load variables from JSON/YAML file
+- Variable substitution applied before sending requests
+- Enables parameterized benchmarks (different user names, topics, etc.)
+- YAML config support (`template_vars`)
+- Tests covering template rendering, missing variables, and CLI integration
+
+## M38: Benchmark Presets Library
+- `xpyd-bench presets list` to show built-in and user-defined presets
+- `xpyd-bench presets show <name>` to display preset configuration
+- `--preset <name>` as shorthand for common benchmark configurations
+- User preset directory: `~/.xpyd-bench/presets/` (YAML files)
+- Built-in presets: throughput-max, latency-optimal, soak-test, cold-start
+- Tests covering preset loading, user overrides, and CLI integration
+
+## M39: Cost Estimation
+- `--cost-model <path>` YAML file mapping model names to $/1K tokens (input/output)
+- After benchmark, compute estimated cost based on actual token counts
+- Cost included in JSON result, CSV export, and terminal summary
+- `--dry-run` shows estimated cost before running
+- YAML config support (`cost_model`)
+- Tests covering cost calculation, multiple models, and dry-run estimation
