@@ -51,6 +51,23 @@ class DebugLogger:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._file = open(self._path, "w")  # noqa: SIM115
 
+    def log_connection_config(
+        self,
+        http2: bool = False,
+        max_connections: int = 100,
+        max_keepalive: int = 20,
+    ) -> None:
+        """Write connection pool configuration as the first log entry."""
+        entry = {
+            "type": "connection_config",
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+            "http2": http2,
+            "max_connections": max_connections,
+            "max_keepalive": max_keepalive,
+        }
+        self._file.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        self._file.flush()
+
     def log(
         self,
         url: str,
