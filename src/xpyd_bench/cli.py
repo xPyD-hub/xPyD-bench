@@ -274,6 +274,12 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Disable progress bar.",
     )
+    parser.add_argument(
+        "--no-live",
+        action="store_true",
+        default=False,
+        help="Disable live progress dashboard (auto-disabled for non-TTY).",
+    )
     vllm_ext.add_argument(
         "--ignore-eos",
         action="store_true",
