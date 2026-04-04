@@ -232,7 +232,7 @@
 - Auto-detect non-TTY and disable gracefully
 - Tests covering dashboard data feed and non-TTY fallback
 
-## M30: Benchmark Result Storage & History
+## M30: Benchmark Result Storage & History ✅
 - `--result-dir <path>` to auto-save results with timestamped filenames
 - `xpyd-bench history --result-dir <path>` to list past runs with summary
 - `xpyd-bench history --result-dir <path> --last N` to show last N runs
