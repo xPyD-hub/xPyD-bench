@@ -433,6 +433,13 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Export per-request detailed metrics as CSV.",
     )
     reporting.add_argument(
+        "--html-report",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Export an interactive HTML report dashboard.",
+    )
+    reporting.add_argument(
         "--rich-progress",
         action="store_true",
         help="Use rich progress bar and summary table.",
@@ -593,6 +600,12 @@ def bench_main(argv: list[str] | None = None) -> None:
 
         p = export_per_request_csv(bench_result, args.export_requests_csv)
         print(f"\nPer-request CSV saved to {p}")
+
+    if getattr(args, "html_report", None):
+        from xpyd_bench.reporting.html_report import export_html_report
+
+        p = export_html_report(bench_result, args.html_report)
+        print(f"\nHTML report saved to {p}")
 
     # Save results if requested
     if args.save_result:
