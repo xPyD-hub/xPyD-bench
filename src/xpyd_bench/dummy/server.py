@@ -489,6 +489,16 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
     ignore_eos = body.get("ignore_eos", False)
     stream_options = body.get("stream_options") or {}
     include_usage = stream_options.get("include_usage", False)
+    # Chat-specific params (accepted but not simulated by dummy)
+    body.get("response_format")
+    body.get("tools")
+    body.get("tool_choice")
+    body.get("parallel_tool_calls")
+    max_completion_tokens = body.get("max_completion_tokens")
+    body.get("service_tier")
+    # Use max_completion_tokens as fallback for max_tokens if provided
+    if max_completion_tokens is not None and body.get("max_tokens") is None:
+        max_tokens = max_completion_tokens
     prompt_tokens = _estimate_prompt_tokens(None, messages)
 
     if stream:
