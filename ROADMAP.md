@@ -38,7 +38,7 @@
 - Synthetic dataset generation (configurable prompt/output length distribution)
 - Dataset validation and stats reporting
 
-## M6: Extended Metrics & Reporting ⬜
+## M6: Extended Metrics & Reporting ✅
 - Per-request detailed metrics export
 - Percentile breakdown (P50/P90/P95/P99)
 - Time-series metrics (throughput over time)
