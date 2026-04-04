@@ -864,6 +864,16 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
 
     _compute_metrics(result)
 
+    # Anomaly detection (M43)
+    anomaly_threshold = getattr(args, "anomaly_threshold", 1.5)
+    if anomaly_threshold and anomaly_threshold > 0:
+        from xpyd_bench.bench.anomaly import detect_anomalies
+
+        latencies = [r.latency_ms for r in result.requests if r.success]
+        anomaly_result = detect_anomalies(latencies, multiplier=anomaly_threshold)
+        if anomaly_result is not None and anomaly_result.count > 0:
+            result.anomalies = anomaly_result.to_dict()
+
     if shutdown_requested:
         print(
             f"\n⚠️  Partial results: {result.completed} completed, "
@@ -904,6 +914,15 @@ def _print_summary(r: BenchmarkResult) -> None:
                 f"  {label:5s}  mean={mean:8.2f}  P50={p50:8.2f}  "
                 f"P90={p90:8.2f}  P95={p95:8.2f}  P99={p99:8.2f} ms"
             )
+    if r.anomalies:
+        count = r.anomalies["count"]
+        threshold = r.anomalies["threshold_ms"]
+        print(f"\n  ⚠️  Anomalies: {count} request(s) exceeded {threshold:.1f} ms threshold")
+        for a in r.anomalies["flagged_requests"][:5]:
+            idx = a["index"]
+            lat = a["latency_ms"]
+            dev = a["deviation_factor"]
+            print(f"      Request #{idx}: {lat:.2f} ms ({dev:.1f}x IQR above Q3)")
     print("=" * 60)
 
 
@@ -1029,4 +1048,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["partial"] = True
     if r.tags:
         d["tags"] = r.tags
+    if r.anomalies:
+        d["anomalies"] = r.anomalies
     return d

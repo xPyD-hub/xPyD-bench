@@ -353,6 +353,15 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Enable gzip compression of request bodies (Content-Encoding: gzip).",
     )
 
+    # Anomaly detection (M43)
+    parser.add_argument(
+        "--anomaly-threshold",
+        type=float,
+        default=1.5,
+        dest="anomaly_threshold",
+        help="IQR multiplier for latency anomaly detection (default: 1.5, 0 disables).",
+    )
+
     # Custom headers
     parser.add_argument(
         "--header",
