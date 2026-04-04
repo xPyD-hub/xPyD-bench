@@ -1,6 +1,6 @@
 # xPyD-bench Roadmap
 
-## M1: Core Benchmark Runner — vLLM Bench Compatible CLI ⬜
+## M1: Core Benchmark Runner — vLLM Bench Compatible CLI ✅
 - Study vLLM bench (`benchmarks/benchmark_serving.py`) CLI arguments thoroughly
 - Implement CLI with **full compatibility** to vLLM bench arguments
 - Implement async HTTP client for OpenAI API endpoints
