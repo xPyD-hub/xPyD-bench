@@ -260,9 +260,19 @@ def _build_payload(
     args: Namespace,
     prompt: str,
     is_chat: bool,
+    is_embeddings: bool = False,
 ) -> dict[str, Any]:
     """Build the JSON body for a single request."""
-    payload: dict[str, Any] = {"max_tokens": args.output_len}
+    if is_embeddings:
+        payload: dict[str, Any] = {"input": prompt}
+        if args.model:
+            payload["model"] = args.model
+        encoding_format = getattr(args, "encoding_format", None)
+        if encoding_format is not None:
+            payload["encoding_format"] = encoding_format
+        return payload
+
+    payload = {"max_tokens": args.output_len}
 
     if args.model:
         payload["model"] = args.model
@@ -408,10 +418,15 @@ def _compute_metrics(result: BenchmarkResult) -> None:
 async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, BenchmarkResult]:
     """Execute the benchmark and return (result_dict, BenchmarkResult)."""
     is_chat = "chat" in args.endpoint
+    is_embeddings = "embeddings" in args.endpoint
     # Use explicit --stream/--no-stream if provided; default to endpoint type for
     # backward compatibility (chat=streaming, completions=non-streaming).
+    # Embeddings are always non-streaming.
     stream_flag = getattr(args, "stream", None)
-    is_streaming = stream_flag if stream_flag is not None else is_chat
+    if is_embeddings:
+        is_streaming = False
+    else:
+        is_streaming = stream_flag if stream_flag is not None else is_chat
     url = f"{base_url}{args.endpoint}"
 
     # Build default headers (authentication + custom)
@@ -528,7 +543,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             await adaptive_limiter.acquire()
             try:
                 r = await _send_request(
-                    client, url, _build_payload(args, prompt, is_chat), is_streaming,
+                    client, url, _build_payload(args, prompt, is_chat, is_embeddings), is_streaming,
                     request_timeout=request_timeout,
                     retries=req_retries,
                     retry_delay=req_retry_delay,
@@ -540,13 +555,13 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         if semaphore:
             async with semaphore:
                 return await _send_request(
-                    client, url, _build_payload(args, prompt, is_chat), is_streaming,
+                    client, url, _build_payload(args, prompt, is_chat, is_embeddings), is_streaming,
                     request_timeout=request_timeout,
                     retries=req_retries,
                     retry_delay=req_retry_delay,
                 )
         return await _send_request(
-            client, url, _build_payload(args, prompt, is_chat), is_streaming,
+            client, url, _build_payload(args, prompt, is_chat, is_embeddings), is_streaming,
             request_timeout=request_timeout,
             retries=req_retries,
             retry_delay=req_retry_delay,
@@ -570,7 +585,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         )[:warmup_count]
         async with httpx.AsyncClient(headers=headers) as warmup_client:
             for wi, wp in enumerate(warmup_prompts):
-                payload = _build_payload(args, wp, is_chat)
+                payload = _build_payload(args, wp, is_chat, is_embeddings)
                 wr = await _send_request(warmup_client, url, payload, is_streaming)
                 if not args.disable_tqdm:
                     status = "ok" if wr.success else f"FAIL: {wr.error}"
@@ -593,7 +608,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     shutdown_requested = False
 
     async def _tracked_task(client: httpx.AsyncClient, prompt: str) -> RequestResult:
-        payload = _build_payload(args, prompt, is_chat)
+        payload = _build_payload(args, prompt, is_chat, is_embeddings)
         r = await _task(client, prompt)
         if debug_logger:
             debug_logger.log(url, payload, r)
