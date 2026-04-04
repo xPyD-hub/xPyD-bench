@@ -10,7 +10,7 @@
 - Output format aligned with vLLM bench
 - Extended/advanced options via YAML config (`--config`)
 
-## M2: Dummy Server ⬜
+## M2: Dummy Server ✅
 - Dummy prefill/decode server simulating vLLM behavior
 - Support /v1/completions and /v1/chat/completions
 - Streaming response simulation with configurable latency
