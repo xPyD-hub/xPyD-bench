@@ -269,36 +269,38 @@ def _compute_metrics(result: BenchmarkResult) -> None:
             result.total_input_tokens + result.total_output_tokens
         ) / result.total_duration_s
 
+    def _set_percentiles(
+        values: list[float], prefix: str, target: BenchmarkResult
+    ) -> None:
+        """Compute and set mean/median/p50/p90/p95/p99 on *target*."""
+        if not values:
+            return
+        setattr(target, f"mean_{prefix}", float(np.mean(values)))
+        setattr(target, f"median_{prefix}", float(np.median(values)))
+        setattr(target, f"p50_{prefix}", float(np.percentile(values, 50)))
+        setattr(target, f"p90_{prefix}", float(np.percentile(values, 90)))
+        setattr(target, f"p95_{prefix}", float(np.percentile(values, 95)))
+        setattr(target, f"p99_{prefix}", float(np.percentile(values, 99)))
+
     # E2E latency
     e2els = [r.latency_ms for r in successful]
-    result.mean_e2el_ms = float(np.mean(e2els))
-    result.median_e2el_ms = float(np.median(e2els))
-    result.p99_e2el_ms = float(np.percentile(e2els, 99))
+    _set_percentiles(e2els, "e2el_ms", result)
 
     # TTFT
     ttfts = [r.ttft_ms for r in successful if r.ttft_ms is not None]
-    if ttfts:
-        result.mean_ttft_ms = float(np.mean(ttfts))
-        result.median_ttft_ms = float(np.median(ttfts))
-        result.p99_ttft_ms = float(np.percentile(ttfts, 99))
+    _set_percentiles(ttfts, "ttft_ms", result)
 
     # TPOT
     tpots = [r.tpot_ms for r in successful if r.tpot_ms is not None]
-    if tpots:
-        result.mean_tpot_ms = float(np.mean(tpots))
-        result.median_tpot_ms = float(np.median(tpots))
-        result.p99_tpot_ms = float(np.percentile(tpots, 99))
+    _set_percentiles(tpots, "tpot_ms", result)
 
     # ITL
     all_itls = [itl for r in successful for itl in r.itl_ms]
-    if all_itls:
-        result.mean_itl_ms = float(np.mean(all_itls))
-        result.median_itl_ms = float(np.median(all_itls))
-        result.p99_itl_ms = float(np.percentile(all_itls, 99))
+    _set_percentiles(all_itls, "itl_ms", result)
 
 
-async def run_benchmark(args: Namespace, base_url: str) -> dict:
-    """Execute the benchmark and return result dict."""
+async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, BenchmarkResult]:
+    """Execute the benchmark and return (result_dict, BenchmarkResult)."""
     is_chat = "chat" in args.endpoint
     is_streaming = is_chat  # streaming by default for chat endpoint
     url = f"{base_url}{args.endpoint}"
@@ -360,34 +362,56 @@ async def run_benchmark(args: Namespace, base_url: str) -> dict:
             client, url, _build_payload(args, prompt, is_chat), is_streaming
         )
 
+    # Rich progress bar
+    use_rich = getattr(args, "rich_progress", False) and not args.disable_tqdm
+    reporter = None
+    if use_rich:
+        from xpyd_bench.reporting.rich_output import RichProgressReporter
+
+        reporter = RichProgressReporter(total=args.num_prompts)
+        reporter.start()
+
     tasks: list[asyncio.Task] = []
     overall_start = time.perf_counter()
+
+    async def _tracked_task(client: httpx.AsyncClient, prompt: str) -> RequestResult:
+        r = await _task(client, prompt)
+        if reporter:
+            reporter.advance(success=r.success)
+        return r
 
     async with httpx.AsyncClient() as client:
         for i, prompt in enumerate(prompts):
             if i > 0:
                 await asyncio.sleep(intervals[i])
-            task = asyncio.create_task(_task(client, prompt))
+            task = asyncio.create_task(_tracked_task(client, prompt))
             tasks.append(task)
 
-            if not args.disable_tqdm and (i + 1) % 100 == 0:
+            if not use_rich and not args.disable_tqdm and (i + 1) % 100 == 0:
                 print(f"  Launched {i + 1}/{args.num_prompts} requests...")
 
         # Wait for all to complete
         results_list = await asyncio.gather(*tasks)
 
     overall_end = time.perf_counter()
+    if reporter:
+        reporter.stop()
+
     result.total_duration_s = overall_end - overall_start
     result.requests = list(results_list)
 
     _compute_metrics(result)
-    _print_summary(result)
 
-    return _to_dict(result)
+    if reporter:
+        reporter.print_summary_table(result)
+    else:
+        _print_summary(result)
+
+    return _to_dict(result), result
 
 
 def _print_summary(r: BenchmarkResult) -> None:
-    """Print human-readable benchmark summary."""
+    """Print human-readable benchmark summary (plain text fallback)."""
     print("=" * 60)
     print("Benchmark Results")
     print("=" * 60)
@@ -398,24 +422,22 @@ def _print_summary(r: BenchmarkResult) -> None:
     print(f"  Output throughput:     {r.output_throughput:.2f} tok/s")
     print(f"  Total tok throughput:  {r.total_token_throughput:.2f} tok/s")
     print()
-    print(f"  Mean TTFT:     {r.mean_ttft_ms:.2f} ms")
-    print(f"  Median TTFT:   {r.median_ttft_ms:.2f} ms")
-    print(f"  P99 TTFT:      {r.p99_ttft_ms:.2f} ms")
-    print(f"  Mean TPOT:     {r.mean_tpot_ms:.2f} ms")
-    print(f"  Median TPOT:   {r.median_tpot_ms:.2f} ms")
-    print(f"  P99 TPOT:      {r.p99_tpot_ms:.2f} ms")
-    print(f"  Mean ITL:      {r.mean_itl_ms:.2f} ms")
-    print(f"  Median ITL:    {r.median_itl_ms:.2f} ms")
-    print(f"  P99 ITL:       {r.p99_itl_ms:.2f} ms")
-    print(f"  Mean E2EL:     {r.mean_e2el_ms:.2f} ms")
-    print(f"  Median E2EL:   {r.median_e2el_ms:.2f} ms")
-    print(f"  P99 E2EL:      {r.p99_e2el_ms:.2f} ms")
+    for label, prefix in [("TTFT", "ttft"), ("TPOT", "tpot"), ("ITL", "itl"), ("E2EL", "e2el")]:
+        mean = getattr(r, f"mean_{prefix}_ms")
+        p50 = getattr(r, f"p50_{prefix}_ms")
+        p90 = getattr(r, f"p90_{prefix}_ms")
+        p95 = getattr(r, f"p95_{prefix}_ms")
+        p99 = getattr(r, f"p99_{prefix}_ms")
+        print(
+            f"  {label:5s}  mean={mean:8.2f}  P50={p50:8.2f}  "
+            f"P90={p90:8.2f}  P95={p95:8.2f}  P99={p99:8.2f} ms"
+        )
     print("=" * 60)
 
 
 def _to_dict(r: BenchmarkResult) -> dict:
     """Convert BenchmarkResult to a JSON-serializable dict."""
-    return {
+    d: dict[str, Any] = {
         "backend": r.backend,
         "base_url": r.base_url,
         "endpoint": r.endpoint,
@@ -433,16 +455,9 @@ def _to_dict(r: BenchmarkResult) -> dict:
         "request_throughput": r.request_throughput,
         "output_throughput": r.output_throughput,
         "total_token_throughput": r.total_token_throughput,
-        "mean_ttft_ms": r.mean_ttft_ms,
-        "median_ttft_ms": r.median_ttft_ms,
-        "p99_ttft_ms": r.p99_ttft_ms,
-        "mean_tpot_ms": r.mean_tpot_ms,
-        "median_tpot_ms": r.median_tpot_ms,
-        "p99_tpot_ms": r.p99_tpot_ms,
-        "mean_itl_ms": r.mean_itl_ms,
-        "median_itl_ms": r.median_itl_ms,
-        "p99_itl_ms": r.p99_itl_ms,
-        "mean_e2el_ms": r.mean_e2el_ms,
-        "median_e2el_ms": r.median_e2el_ms,
-        "p99_e2el_ms": r.p99_e2el_ms,
     }
+    for prefix in ("ttft", "tpot", "itl", "e2el"):
+        for stat in ("mean", "median", "p50", "p90", "p95", "p99"):
+            key = f"{stat}_{prefix}_ms"
+            d[key] = getattr(r, key)
+    return d
