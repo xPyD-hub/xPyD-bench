@@ -1,88 +1,225 @@
-"""CLI entry point for xpyd-bench."""
+"""CLI entry point for xpyd-bench — vLLM bench compatible."""
 
 from __future__ import annotations
 
 import argparse
-import sys
+import asyncio
+import json
+from pathlib import Path
+
+import yaml
 
 
-def bench_main(argv: list[str] | None = None) -> None:
-    """Entry point for `xpyd-bench` command."""
-    parser = argparse.ArgumentParser(
-        prog="xpyd-bench",
-        description="Benchmark an xPyD proxy instance",
+def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
+    """Add vLLM-bench compatible CLI arguments."""
+    # Connection
+    parser.add_argument(
+        "--backend",
+        type=str,
+        default="openai",
+        choices=["openai", "openai-chat"],
+        help="Backend type (default: openai).",
     )
     parser.add_argument(
-        "--target",
-        required=True,
-        help="Base URL of the xPyD proxy (e.g. http://localhost:8080)",
+        "--base-url",
+        type=str,
+        default=None,
+        help="Server base URL (e.g. http://localhost:8000). "
+        "Overrides --host/--port.",
     )
+    parser.add_argument("--host", type=str, default="127.0.0.1", help="Server host.")
+    parser.add_argument("--port", type=int, default=8000, help="Server port.")
     parser.add_argument(
         "--endpoint",
-        choices=["completion", "chat"],
-        default="chat",
-        help="API endpoint to benchmark (default: chat)",
-    )
-    parser.add_argument(
-        "--concurrency",
-        type=int,
-        default=1,
-        help="Number of concurrent in-flight requests (default: 1)",
-    )
-    parser.add_argument(
-        "--num-requests",
-        type=int,
-        default=100,
-        help="Total number of requests to send (default: 100)",
-    )
-    parser.add_argument(
-        "--max-tokens",
-        type=int,
-        default=256,
-        help="Max tokens per request (default: 256)",
-    )
-    parser.add_argument(
-        "--dataset",
         type=str,
-        default=None,
-        help="Path to dataset file (JSON/JSONL) for prompts",
-    )
-    parser.add_argument(
-        "--scenario",
-        type=str,
-        default=None,
-        help="Named scenario from scenarios/ directory",
-    )
-    parser.add_argument(
-        "--output",
-        type=str,
-        default=None,
-        help="Output file path for results (JSON)",
+        default="/v1/completions",
+        help="API endpoint path (default: /v1/completions).",
     )
     parser.add_argument(
         "--model",
         type=str,
         default=None,
-        help="Model name to use in requests",
+        help="Model name for requests. If omitted, fetched from server.",
+    )
+
+    # Workload
+    parser.add_argument(
+        "--num-prompts",
+        type=int,
+        default=1000,
+        help="Total number of prompts/requests to send (default: 1000).",
     )
     parser.add_argument(
-        "--stream",
+        "--request-rate",
+        type=float,
+        default=float("inf"),
+        help="Requests per second. inf = send all at once (default: inf).",
+    )
+    parser.add_argument(
+        "--burstiness",
+        type=float,
+        default=1.0,
+        help="Burstiness factor for request scheduling (default: 1.0 = Poisson).",
+    )
+    parser.add_argument(
+        "--max-concurrency",
+        type=int,
+        default=None,
+        help="Maximum concurrent in-flight requests.",
+    )
+    parser.add_argument(
+        "--input-len",
+        type=int,
+        default=256,
+        help="Input prompt length in tokens (for random dataset, default: 256).",
+    )
+    parser.add_argument(
+        "--output-len",
+        type=int,
+        default=128,
+        help="Max output tokens per request (default: 128).",
+    )
+    parser.add_argument(
+        "--dataset-name",
+        type=str,
+        default="random",
+        choices=["random"],
+        help="Dataset name (default: random).",
+    )
+    parser.add_argument(
+        "--dataset-path",
+        type=str,
+        default=None,
+        help="Path to dataset file (JSONL/JSON).",
+    )
+    parser.add_argument("--seed", type=int, default=0, help="Random seed (default: 0).")
+
+    # Sampling parameters
+    sampling = parser.add_argument_group("sampling parameters")
+    sampling.add_argument("--temperature", type=float, default=None)
+    sampling.add_argument("--top-p", type=float, default=None)
+    sampling.add_argument("--top-k", type=int, default=None)
+    sampling.add_argument("--frequency-penalty", type=float, default=None)
+    sampling.add_argument("--presence-penalty", type=float, default=None)
+    sampling.add_argument("--best-of", type=int, default=None)
+    sampling.add_argument("--use-beam-search", action="store_true")
+    sampling.add_argument("--logprobs", type=int, default=None)
+
+    # Output
+    parser.add_argument(
+        "--save-result",
         action="store_true",
-        default=False,
-        help="Use streaming responses (required for TTFT measurement)",
+        help="Save benchmark results to JSON file.",
+    )
+    parser.add_argument("--result-dir", type=str, default=None, help="Result output directory.")
+    parser.add_argument("--result-filename", type=str, default=None, help="Result filename.")
+    parser.add_argument(
+        "--metadata",
+        metavar="KEY=VALUE",
+        nargs="*",
+        help="Metadata key-value pairs for result file.",
+    )
+    parser.add_argument(
+        "--disable-tqdm",
+        action="store_true",
+        help="Disable progress bar.",
+    )
+    parser.add_argument(
+        "--ignore-eos",
+        action="store_true",
+        help="Ignore EOS token in generation.",
     )
 
+    # Extended config
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Path to YAML config file for extended options.",
+    )
+
+
+def _resolve_base_url(args: argparse.Namespace) -> str:
+    """Resolve the base URL from --base-url or --host/--port."""
+    if args.base_url:
+        return args.base_url.rstrip("/")
+    return f"http://{args.host}:{args.port}"
+
+
+def _load_yaml_config(path: str, args: argparse.Namespace) -> argparse.Namespace:
+    """Merge YAML config into args (CLI takes precedence)."""
+    with open(path) as f:
+        cfg = yaml.safe_load(f) or {}
+    for key, value in cfg.items():
+        attr = key.replace("-", "_")
+        # Only set if not explicitly provided on CLI
+        if getattr(args, attr, None) is None:
+            setattr(args, attr, value)
+    return args
+
+
+def bench_main(argv: list[str] | None = None) -> None:
+    """Entry point for ``xpyd-bench`` command."""
+    parser = argparse.ArgumentParser(
+        prog="xpyd-bench",
+        description="Benchmark an OpenAI-compatible serving endpoint (vLLM bench compatible)",
+    )
+    _add_vllm_compat_args(parser)
     args = parser.parse_args(argv)
 
-    from xpyd_bench import __version__
+    # Merge YAML config if provided
+    if args.config:
+        args = _load_yaml_config(args.config, args)
 
-    # TODO: implement benchmark runner
+    base_url = _resolve_base_url(args)
+
+    from xpyd_bench import __version__
+    from xpyd_bench.bench.runner import run_benchmark
+
     print(f"xpyd-bench v{__version__}")
-    print(f"  Target:      {args.target}")
-    print(f"  Endpoint:    /v1/{'chat/completions' if args.endpoint == 'chat' else 'completions'}")
-    print(f"  Concurrency: {args.concurrency}")
-    print(f"  Requests:    {args.num_requests}")
-    print(f"  Max tokens:  {args.max_tokens}")
-    print(f"  Stream:      {args.stream}")
+    print(f"  Base URL:       {base_url}")
+    print(f"  Endpoint:       {args.endpoint}")
+    print(f"  Model:          {args.model or '(auto-detect)'}")
+    print(f"  Num prompts:    {args.num_prompts}")
+    print(f"  Request rate:   {args.request_rate}")
+    print(f"  Max concurrency:{args.max_concurrency or 'unlimited'}")
+    print(f"  Input len:      {args.input_len}")
+    print(f"  Output len:     {args.output_len}")
     print()
-    print("Benchmark runner not yet implemented.")
+
+    result = asyncio.run(run_benchmark(args, base_url))
+
+    # Save results if requested
+    if args.save_result:
+        _save_result(args, result)
+
+
+def _save_result(args: argparse.Namespace, result: dict) -> None:
+    """Save benchmark result to JSON."""
+    from datetime import datetime
+
+    result_dir = Path(args.result_dir) if args.result_dir else Path(".")
+    result_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.result_filename:
+        filename = args.result_filename
+    else:
+        dt = datetime.now().strftime("%Y%m%d-%H%M%S")
+        rate = args.request_rate if args.request_rate != float("inf") else "inf"
+        model = args.model or "unknown"
+        filename = f"{args.backend}-{rate}qps-{model}-{dt}.json"
+
+    filepath = result_dir / filename
+
+    # Add metadata
+    if args.metadata:
+        meta = {}
+        for item in args.metadata:
+            if "=" in item:
+                k, v = item.split("=", 1)
+                meta[k] = v
+        result["metadata"] = meta
+
+    with open(filepath, "w") as f:
+        json.dump(result, f, indent=2, default=str)
+    print(f"\nResults saved to {filepath}")
