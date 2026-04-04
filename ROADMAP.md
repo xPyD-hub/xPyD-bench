@@ -85,7 +85,7 @@
 - Dummy server optionally validates API key (`--require-api-key`)
 - Tests covering auth header injection, env var fallback, missing key error, dummy server validation
 
-## M12: Graceful Shutdown & Progress Persistence
+## M12: Graceful Shutdown & Progress Persistence ✅
 - SIGINT during benchmark triggers graceful shutdown instead of losing all data
 - In-flight requests get a grace period (default 5s) to complete
 - Partial `BenchmarkResult` computed from completed requests
