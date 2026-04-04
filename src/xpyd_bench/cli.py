@@ -364,6 +364,27 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Time-series bucketing window in seconds (default: 1.0).",
     )
     reporting.add_argument(
+        "--csv-report",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Export summary metrics as a single-row CSV file.",
+    )
+    reporting.add_argument(
+        "--markdown-report",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Export summary metrics as a Markdown table.",
+    )
+    reporting.add_argument(
+        "--export-requests-csv",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Export per-request detailed metrics as CSV.",
+    )
+    reporting.add_argument(
         "--rich-progress",
         action="store_true",
         help="Use rich progress bar and summary table.",
@@ -506,6 +527,24 @@ def bench_main(argv: list[str] | None = None) -> None:
         rpath.parent.mkdir(parents=True, exist_ok=True)
         rpath.write_text(text)
         print(f"\nText report saved to {rpath}")
+
+    if args.csv_report:
+        from xpyd_bench.reporting.formats import export_csv_report
+
+        p = export_csv_report(bench_result, args.csv_report)
+        print(f"\nCSV report saved to {p}")
+
+    if args.markdown_report:
+        from xpyd_bench.reporting.formats import export_markdown_report
+
+        p = export_markdown_report(bench_result, args.markdown_report)
+        print(f"\nMarkdown report saved to {p}")
+
+    if args.export_requests_csv:
+        from xpyd_bench.reporting.formats import export_per_request_csv
+
+        p = export_per_request_csv(bench_result, args.export_requests_csv)
+        print(f"\nPer-request CSV saved to {p}")
 
     # Save results if requested
     if args.save_result:
