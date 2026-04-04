@@ -404,6 +404,26 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         "is not installed. (default: None = word-split)",
     )
 
+    # Connection pool & HTTP/2 (M28)
+    parser.add_argument(
+        "--http2",
+        action="store_true",
+        default=False,
+        help="Enable HTTP/2 multiplexing (requires h2 package).",
+    )
+    parser.add_argument(
+        "--max-connections",
+        type=int,
+        default=100,
+        help="Maximum number of connections in the pool (default: 100).",
+    )
+    parser.add_argument(
+        "--max-keepalive",
+        type=int,
+        default=20,
+        help="Maximum number of keepalive connections (default: 20).",
+    )
+
     # Extended config
     parser.add_argument(
         "--config",
@@ -531,6 +551,14 @@ def _dry_run(args: argparse.Namespace, base_url: str) -> None:
     # Tokenizer
     tokenizer = getattr(args, "tokenizer", None)
     print(f"  Tokenizer:       {tokenizer or '(word-split)'}")
+
+    # Connection pool (M28)
+    http2 = getattr(args, "http2", False)
+    max_conn = getattr(args, "max_connections", 100)
+    max_ka = getattr(args, "max_keepalive", 20)
+    print(f"  HTTP/2:          {http2}")
+    print(f"  Max connections: {max_conn}")
+    print(f"  Max keepalive:   {max_ka}")
 
     # Auth
     api_key_source = "none"
@@ -1126,6 +1154,9 @@ def replay_main(argv: list[str] | None = None) -> None:
             model=model,
             api_key=args.api_key,
             timeout=args.timeout,
+            http2=getattr(args, "http2", False),
+            max_connections=getattr(args, "max_connections", 100),
+            max_keepalive=getattr(args, "max_keepalive", 20),
         )
     )
 

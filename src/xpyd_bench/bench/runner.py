@@ -18,6 +18,35 @@ from xpyd_bench.bench.env import collect_env_info
 from xpyd_bench.bench.models import BenchmarkResult, RequestResult
 
 # ---------------------------------------------------------------------------
+# HTTP client helpers
+# ---------------------------------------------------------------------------
+
+
+def _build_client_kwargs(
+    args: Namespace, headers: dict[str, str] | None = None
+) -> dict[str, Any]:
+    """Build kwargs dict for ``httpx.AsyncClient`` from CLI/config args."""
+    kwargs: dict[str, Any] = {}
+    if headers:
+        kwargs["headers"] = headers
+    if getattr(args, "http2", False):
+        try:
+            import h2  # noqa: F401
+        except ImportError:
+            raise SystemExit(
+                "ERROR: --http2 requires the 'h2' package. "
+                "Install it with: pip install h2"
+            )
+        kwargs["http2"] = True
+    max_connections = getattr(args, "max_connections", 100) or 100
+    max_keepalive = getattr(args, "max_keepalive", 20) or 20
+    kwargs["limits"] = httpx.Limits(
+        max_connections=max_connections,
+        max_keepalive_connections=max_keepalive,
+    )
+    return kwargs
+
+# ---------------------------------------------------------------------------
 # Prompt generation
 # ---------------------------------------------------------------------------
 
@@ -588,7 +617,8 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         warmup_prompts = prompts[:warmup_count] if len(prompts) >= warmup_count else (
             prompts * ((warmup_count // len(prompts)) + 1)
         )[:warmup_count]
-        async with httpx.AsyncClient(headers=headers) as warmup_client:
+        warmup_kw = _build_client_kwargs(args, headers=headers)
+        async with httpx.AsyncClient(**warmup_kw) as warmup_client:
             for wi, wp in enumerate(warmup_prompts):
                 payload = _build_payload(args, wp, is_chat, is_embeddings)
                 wr = await _send_request(warmup_client, url, payload, is_streaming)
@@ -603,6 +633,11 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     debug_logger: DebugLogger | None = None
     if debug_log_path:
         debug_logger = DebugLogger(debug_log_path)
+        debug_logger.log_connection_config(
+            http2=getattr(args, "http2", False),
+            max_connections=getattr(args, "max_connections", 100),
+            max_keepalive=getattr(args, "max_keepalive", 20),
+        )
 
     if reporter:
         reporter.start()
@@ -623,7 +658,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
 
     grace_period = getattr(args, "shutdown_grace_period", 5.0) or 5.0
 
-    async with httpx.AsyncClient(headers=headers) as client:
+    async with httpx.AsyncClient(**_build_client_kwargs(args, headers=headers)) as client:
         # Install signal handler for graceful shutdown
         loop = asyncio.get_running_loop()
 
@@ -744,6 +779,9 @@ async def replay_trace(
     model: str = "",
     api_key: str | None = None,
     timeout: float = 300.0,
+    http2: bool = False,
+    max_connections: int = 100,
+    max_keepalive: int = 20,
 ) -> BenchmarkResult:
     """Replay a recorded trace against a target server.
 
@@ -772,7 +810,16 @@ async def replay_trace(
         environment=collect_env_info(),
     )
 
-    async with httpx.AsyncClient(headers=headers) as client:
+    replay_kwargs: dict[str, Any] = {
+        "headers": headers,
+        "limits": httpx.Limits(
+            max_connections=max_connections,
+            max_keepalive_connections=max_keepalive,
+        ),
+    }
+    if http2:
+        replay_kwargs["http2"] = True
+    async with httpx.AsyncClient(**replay_kwargs) as client:
         start_time = time.perf_counter()
 
         for i, entry in enumerate(trace.entries):
