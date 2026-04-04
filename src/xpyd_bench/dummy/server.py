@@ -299,8 +299,11 @@ async def _handle_completions(request: Request) -> JSONResponse | StreamingRespo
         if stopped:
             finish_reason = "stop"
 
+        # Track generated token count before echo prepend
+        gen_token_count = actual_tokens
+
         if echo:
-            generated_text = prompt_text + generated_text
+            generated_text = prompt_text + " " + generated_text if generated_text else prompt_text
 
         choice: dict = {
             "index": i,
@@ -319,13 +322,6 @@ async def _handle_completions(request: Request) -> JSONResponse | StreamingRespo
                 ],
                 "text_offset": list(range(0, len(generated_text), max(1, len(generated_text) // max(len(tokens), 1)))),  # noqa: E501
             }
-
-        # Count completion tokens based on generated token count (not echo)
-        gen_token_count = len(generated_text.split()) if generated_text else 0
-        if echo and prompt_text:
-            # Subtract prompt tokens from word count
-            prompt_word_count = len(prompt_text.split()) if prompt_text else 0
-            gen_token_count = max(0, gen_token_count - prompt_word_count)
         total_completion_tokens += gen_token_count
         choices.append(choice)
 
