@@ -847,6 +847,13 @@ def bench_main(argv: list[str] | None = None) -> None:
     if getattr(args, "debug_log", None):
         print(f"\nDebug log saved to {args.debug_log}")
 
+    # Auto-save to result-dir when set (M30)
+    if args.result_dir and not args.save_result:
+        from xpyd_bench.history import auto_save_result
+
+        saved = auto_save_result(result, args.result_dir, args)
+        print(f"\nResults auto-saved to {saved}")
+
     # Save results if requested
     if args.save_result:
         _save_result(args, result)
