@@ -35,6 +35,8 @@ xpyd-bench-compare = "xpyd_bench.cli:compare_main"
 xpyd-bench-multi = "xpyd_bench.cli:multi_main"
 xpyd-bench-profile = "xpyd_bench.cli:profile_main"
 xpyd-bench-replay = "xpyd_bench.cli:replay_main"
+xpyd-bench-config-dump = "xpyd_bench.config_cmd:config_dump_main"
+xpyd-bench-config-validate = "xpyd_bench.config_cmd:config_validate_main"
 xpyd-dummy = "xpyd_bench.dummy.cli:dummy_main"
 
 # Reserved for future xpyd CLI subcommand discovery
