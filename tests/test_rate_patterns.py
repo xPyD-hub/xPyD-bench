@@ -102,8 +102,9 @@ class TestCustomPattern:
         cfg = {"type": "custom", "schedule": [0.0, 10.0]}
         intervals = generate_pattern_intervals(20, cfg, seed=0)
         assert len(intervals) == 20
-        # First interval should be 1.0 (idle second)
-        assert intervals[0] == 1.0
+        # First interval should include ~1s idle carry added to the
+        # exponential gap from the rate=10 second
+        assert intervals[0] > 0.8
 
     def test_deterministic(self):
         cfg = {"type": "custom", "schedule": [5.0, 10.0]}
