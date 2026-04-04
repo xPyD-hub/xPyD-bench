@@ -83,3 +83,6 @@ class BenchmarkResult:
 
     # Environment metadata for reproducibility
     environment: dict[str, str] = field(default_factory=dict)
+
+    # User-defined tags for annotation (M36)
+    tags: dict[str, str] = field(default_factory=dict)

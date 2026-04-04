@@ -552,12 +552,39 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Display a latency heatmap in the terminal after the benchmark.",
     )
 
+    # Tags (M36)
+    parser.add_argument(
+        "--tag",
+        action="append",
+        dest="tags",
+        default=None,
+        metavar="KEY=VALUE",
+        help="Attach a metadata tag (repeatable). E.g. --tag env=prod --tag gpu=A100",
+    )
+
 
 def _resolve_base_url(args: argparse.Namespace) -> str:
     """Resolve the base URL from --base-url or --host/--port."""
     if args.base_url:
         return args.base_url.rstrip("/")
     return f"http://{args.host}:{args.port}"
+
+
+def _parse_tags(args: argparse.Namespace) -> dict[str, str]:
+    """Parse --tag KEY=VALUE items and YAML ``tags`` config into a dict."""
+    tags: dict[str, str] = {}
+    # YAML config may set args.tags as a dict directly
+    yaml_tags = getattr(args, "tags", None)
+    if isinstance(yaml_tags, dict):
+        tags.update({str(k): str(v) for k, v in yaml_tags.items()})
+        return tags
+    # CLI sets args.tags as a list of "KEY=VALUE" strings
+    if yaml_tags:
+        for item in yaml_tags:
+            if "=" in item:
+                k, v = item.split("=", 1)
+                tags[k.strip()] = v.strip()
+    return tags
 
 
 def _dry_run(args: argparse.Namespace, base_url: str) -> None:
@@ -846,6 +873,12 @@ def bench_main(argv: list[str] | None = None) -> None:
     print()
 
     result, bench_result = asyncio.run(run_benchmark(args, base_url))
+
+    # Inject tags (M36)
+    parsed_tags = _parse_tags(args)
+    if parsed_tags:
+        bench_result.tags = parsed_tags
+        result["tags"] = parsed_tags
 
     # Export reports (M6)
     if args.export_requests:
