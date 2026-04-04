@@ -351,7 +351,7 @@
 - YAML config support (`sweep` section)
 - Tests covering sweep orchestration, result aggregation, optimal detection, CLI integration
 
-## M45: Multi-Turn Conversation Benchmarking ⬜
+## M45: Multi-Turn Conversation Benchmarking ✅
 - `xpyd-bench run --multi-turn <path>` CLI flag to load multi-turn conversation datasets
 - JSONL format with `messages` array per line (OpenAI chat format)
 - Sequential turn execution: send turn 1, wait for response, append to context, send turn 2, etc.
