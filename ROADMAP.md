@@ -269,7 +269,7 @@
 - Compatible with `node_exporter` textfile collector and `promtool check metrics`
 - Tests covering export format, histogram buckets, label injection, and CLI integration
 
-## M35: Request Latency Heatmap
+## M35: Request Latency Heatmap ✅
 - Time-bucketed latency heatmap visualization in terminal (rich) and HTML report
 - X-axis: benchmark elapsed time, Y-axis: latency buckets
 - Color intensity: request count per bucket
