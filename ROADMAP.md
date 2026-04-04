@@ -44,3 +44,10 @@
 - Time-series metrics (throughput over time)
 - Rich terminal output (progress bars, live stats)
 - JSON and human-readable report formats
+
+## M7: Built-in Benchmark Scenarios 🔄
+- Predefined scenario presets: short, long_context, mixed, stress
+- ScenarioConfig dataclass with CLI-compatible overrides
+- `--scenario` CLI flag to select presets
+- `--list-scenarios` flag to list available presets
+- Tests covering all presets and CLI integration
