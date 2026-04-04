@@ -350,3 +350,16 @@
 - JSON output with per-level results via `--sweep-output <path>`
 - YAML config support (`sweep` section)
 - Tests covering sweep orchestration, result aggregation, optimal detection, CLI integration
+
+## M45: Multi-Turn Conversation Benchmarking ⬜
+- `xpyd-bench run --multi-turn <path>` CLI flag to load multi-turn conversation datasets
+- JSONL format with `messages` array per line (OpenAI chat format)
+- Sequential turn execution: send turn 1, wait for response, append to context, send turn 2, etc.
+- Per-turn metrics: TTFT, TPOT, latency for each turn in the conversation
+- Aggregate metrics across all conversations and per-turn-index
+- Context growth impact analysis: latency vs conversation depth
+- `--max-turns N` to cap conversation length
+- Synthetic multi-turn generation with configurable turn count and message lengths
+- Dummy server stateful conversation support (maintains context window)
+- YAML config support (`multi_turn`, `max_turns`)
+- Tests covering multi-turn execution, per-turn metrics, context growth, and CLI integration

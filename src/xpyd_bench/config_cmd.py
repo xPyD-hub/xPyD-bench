@@ -95,6 +95,9 @@ _KNOWN_KEYS: set[str] = {
     "request_id_prefix",
     "anomaly_threshold",
     "sweep",
+    "multi_turn",
+    "max_turns",
+    "turns",
 }
 
 # Deprecated keys (currently none, placeholder for future use)

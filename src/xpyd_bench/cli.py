@@ -624,6 +624,32 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Path to YAML cost model file mapping model names to $/1K tokens.",
     )
 
+    # Multi-turn conversation benchmarking (M45)
+    parser.add_argument(
+        "--multi-turn",
+        type=str,
+        default=None,
+        dest="multi_turn",
+        metavar="PATH",
+        help=(
+            "Path to JSONL file with multi-turn conversations, or 'synthetic' "
+            "for auto-generated conversations."
+        ),
+    )
+    parser.add_argument(
+        "--max-turns",
+        type=int,
+        default=None,
+        dest="max_turns",
+        help="Maximum number of turns per conversation (default: unlimited).",
+    )
+    parser.add_argument(
+        "--turns",
+        type=int,
+        default=5,
+        help="Number of turns for synthetic multi-turn generation (default: 5).",
+    )
+
 
 def _resolve_base_url(args: argparse.Namespace) -> str:
     """Resolve the base URL from --base-url or --host/--port."""
@@ -968,6 +994,104 @@ def bench_main(argv: list[str] | None = None) -> None:
     # Dry run: validate config and dataset, print plan, exit
     if getattr(args, "dry_run", False):
         _dry_run(args, base_url)
+        return
+
+    # Multi-turn conversation mode (M45)
+    multi_turn_path = getattr(args, "multi_turn", None)
+    if multi_turn_path:
+        from xpyd_bench.multi_turn import (
+            compute_multi_turn_stats,
+            generate_synthetic_conversations,
+            load_multi_turn_dataset,
+            run_conversation,
+        )
+
+        print(f"xpyd-bench v{__version__} (multi-turn mode)")
+        print(f"  Base URL:       {base_url}")
+        print(f"  Model:          {args.model or '(auto-detect)'}")
+        max_turns = getattr(args, "max_turns", None)
+        print(f"  Max turns:      {max_turns or 'unlimited'}")
+
+        if multi_turn_path == "synthetic":
+            conversations = generate_synthetic_conversations(
+                num_conversations=args.num_prompts,
+                turns=getattr(args, "turns", 5),
+                input_len=args.input_len,
+                seed=getattr(args, "seed", 42),
+            )
+            print(f"  Conversations:  {len(conversations)} (synthetic)")
+        else:
+            conversations = load_multi_turn_dataset(multi_turn_path)
+            print(f"  Conversations:  {len(conversations)} (from {multi_turn_path})")
+        print()
+
+        import httpx
+
+        async def _run_multi_turn() -> list:
+            async with httpx.AsyncClient() as client:
+                results = []
+                for i, msgs in enumerate(conversations):
+                    conv_result = await run_conversation(
+                        client=client,
+                        base_url=base_url,
+                        model=args.model or "mock-model",
+                        messages=msgs,
+                        conversation_id=i,
+                        max_turns=max_turns,
+                        endpoint="/v1/chat/completions",
+                        api_key=getattr(args, "api_key", None),
+                        timeout=getattr(args, "timeout", 300.0),
+                    )
+                    results.append(conv_result)
+                    print(
+                        f"  Conversation {i+1}/{len(conversations)}: "
+                        f"{conv_result.total_turns} turns, "
+                        f"{conv_result.total_latency_ms:.0f}ms"
+                    )
+                return results
+
+        conv_results = asyncio.run(_run_multi_turn())
+        mt_result = compute_multi_turn_stats(conv_results)
+
+        # Print summary
+        stats = mt_result.aggregate_stats
+        print(f"\n{'='*60}")
+        print("  Multi-Turn Benchmark Summary")
+        print(f"{'='*60}")
+        print(f"  Conversations:    {stats.get('total_conversations', 0)}")
+        print(f"  Total turns:      {stats.get('total_turns', 0)}")
+        print(f"  Errors:           {stats.get('total_errors', 0)}")
+        print(f"  Mean TTFT:        {stats.get('mean_ttft_ms', 0):.2f} ms")
+        print(f"  Mean latency:     {stats.get('mean_latency_ms', 0):.2f} ms")
+        if "p50_latency_ms" in stats:
+            print(f"  P50 latency:      {stats['p50_latency_ms']:.2f} ms")
+            print(f"  P99 latency:      {stats['p99_latency_ms']:.2f} ms")
+
+        # Per-turn stats
+        if mt_result.per_turn_stats:
+            print("\n  Per-Turn Statistics:")
+            print(
+                f"  {'Turn':>6}  {'Count':>6}  {'TTFT(ms)':>10}  "
+                f"{'Latency(ms)':>12}  {'Context(tok)':>13}"
+            )
+            for idx in sorted(mt_result.per_turn_stats.keys()):
+                ts = mt_result.per_turn_stats[idx]
+                print(
+                    f"  {idx:>6}  {ts['count']:>6}  "
+                    f"{ts['mean_ttft_ms']:>10.2f}  "
+                    f"{ts['mean_latency_ms']:>12.2f}  "
+                    f"{ts['mean_context_tokens']:>13.0f}"
+                )
+        print(f"{'='*60}")
+
+        # Save result if requested
+        result = mt_result.to_dict()
+        if getattr(args, "save_result", None):
+            p = Path(args.save_result)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(json.dumps(result, indent=2))
+            print(f"\nResults saved to {p}")
+
         return
 
     print(f"xpyd-bench v{__version__}")
