@@ -15,6 +15,7 @@ from xpyd_bench.reporting.metrics import compute_time_series
 def _request_to_dict(r: Any) -> dict:
     """Convert a RequestResult to a plain dict."""
     return {
+        "request_id": r.request_id,
         "prompt_tokens": r.prompt_tokens,
         "completion_tokens": r.completion_tokens,
         "ttft_ms": r.ttft_ms,
@@ -146,6 +147,7 @@ _SUMMARY_COLUMNS = [
 ]
 
 _PER_REQUEST_COLUMNS = [
+    "request_id",
     "prompt_tokens",
     "completion_tokens",
     "ttft_ms",
@@ -203,6 +205,7 @@ def export_per_request_csv(result: BenchmarkResult, path: str | Path) -> Path:
     writer.writerow(_PER_REQUEST_COLUMNS)
     for r in result.requests:
         writer.writerow([
+            r.request_id or "",
             r.prompt_tokens,
             r.completion_tokens,
             r.ttft_ms if r.ttft_ms is not None else "",

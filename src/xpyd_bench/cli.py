@@ -335,6 +335,16 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Base delay between retries in seconds, with exponential backoff. Default: 1.0.",
     )
 
+    # Request ID tracking (M42)
+    parser.add_argument(
+        "--request-id-prefix",
+        type=str,
+        default=None,
+        dest="request_id_prefix",
+        help="Prefix for auto-generated X-Request-ID headers (UUID4). "
+             "E.g. --request-id-prefix bench- produces bench-<uuid>.",
+    )
+
     # Request compression (M40)
     parser.add_argument(
         "--compress",

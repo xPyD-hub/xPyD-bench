@@ -19,6 +19,7 @@ class RequestResult:
     retries: int = 0
     success: bool = True
     error: str | None = None
+    request_id: str | None = None
 
 
 @dataclass

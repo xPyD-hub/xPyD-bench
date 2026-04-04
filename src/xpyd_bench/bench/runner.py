@@ -8,6 +8,7 @@ import json
 import random
 import signal
 import time
+import uuid
 from argparse import Namespace
 from typing import Any
 
@@ -146,19 +147,34 @@ def _is_retryable(exc: Exception) -> bool:
 def _compressed_request_kwargs(
     payload: dict[str, Any],
     compress: bool,
+    extra_headers: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Build request kwargs, optionally gzip-compressing the body."""
     if not compress:
-        return {"json": payload}
+        kw: dict[str, Any] = {"json": payload}
+        if extra_headers:
+            kw["headers"] = extra_headers
+        return kw
     raw = json.dumps(payload).encode()
     compressed = gzip.compress(raw)
+    hdrs = {
+        "Content-Encoding": "gzip",
+        "Content-Type": "application/json",
+    }
+    if extra_headers:
+        hdrs.update(extra_headers)
     return {
         "content": compressed,
-        "headers": {
-            "Content-Encoding": "gzip",
-            "Content-Type": "application/json",
-        },
+        "headers": hdrs,
     }
+
+
+def _generate_request_id(prefix: str | None = None) -> str:
+    """Generate a unique request ID, optionally with a prefix."""
+    uid = uuid.uuid4().hex
+    if prefix:
+        return f"{prefix}{uid}"
+    return uid
 
 
 async def _send_request(
@@ -170,14 +186,17 @@ async def _send_request(
     retries: int = 0,
     retry_delay: float = 1.0,
     compress: bool = False,
+    request_id: str | None = None,
 ) -> RequestResult:
     """Send one request and collect metrics, with optional retry."""
     last_result = RequestResult()
     attempts = 0
+    _extra_hdrs = {"X-Request-ID": request_id} if request_id else None
 
     for attempt in range(retries + 1):
         attempts = attempt
         result = RequestResult()
+        result.request_id = request_id
         start = time.perf_counter()
         result.start_time = start
 
@@ -185,10 +204,11 @@ async def _send_request(
             if is_streaming:
                 result = await _send_streaming(
                     client, url, payload, start, request_timeout=request_timeout,
-                    compress=compress,
+                    compress=compress, extra_headers=_extra_hdrs,
                 )
+                result.request_id = request_id
             else:
-                req_kw = _compressed_request_kwargs(payload, compress)
+                req_kw = _compressed_request_kwargs(payload, compress, extra_headers=_extra_hdrs)
                 resp = await client.post(url, **req_kw, timeout=request_timeout)
                 resp.raise_for_status()
                 end = time.perf_counter()
@@ -230,6 +250,7 @@ async def _send_streaming(
     start: float,
     request_timeout: float = 300.0,
     compress: bool = False,
+    extra_headers: dict[str, str] | None = None,
 ) -> RequestResult:
     """Send a streaming request, measure TTFT / ITL."""
     result = RequestResult()
@@ -241,7 +262,7 @@ async def _send_streaming(
     stream_usage: dict[str, Any] | None = None
 
     try:
-        req_kw = _compressed_request_kwargs(payload, compress)
+        req_kw = _compressed_request_kwargs(payload, compress, extra_headers=extra_headers)
         async with client.stream("POST", url, **req_kw, timeout=request_timeout) as resp:
             resp.raise_for_status()
             async for line in resp.aiter_lines():
@@ -624,23 +645,34 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             )
         return _build_payload(args, prompt, is_chat, is_embeddings)
 
+    # Request ID prefix (M42)
+    req_id_prefix = getattr(args, "request_id_prefix", None) or ""
+
+    def _make_request_id() -> str:
+        uid = uuid.uuid4().hex[:12]
+        return f"{req_id_prefix}{uid}" if req_id_prefix else uid
+
     async def _do_send(
         client: httpx.AsyncClient, payload: dict[str, Any]
     ) -> RequestResult:
+        rid = _make_request_id()
         if use_plugin:
-            return await plugin.send_request(
+            r = await plugin.send_request(
                 client, url, payload,
                 is_streaming=is_streaming,
                 request_timeout=request_timeout,
                 retries=req_retries,
                 retry_delay=req_retry_delay,
             )
+            r.request_id = rid
+            return r
         return await _send_request(
             client, url, payload, is_streaming,
             request_timeout=request_timeout,
             retries=req_retries,
             retry_delay=req_retry_delay,
             compress=req_compress,
+            request_id=rid,
         )
 
     async def _task(client: httpx.AsyncClient, prompt: str) -> RequestResult:

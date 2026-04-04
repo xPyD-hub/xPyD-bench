@@ -28,6 +28,7 @@ class DebugLogEntry:
     retries: int = 0
     payload_bytes: int | None = None
     compressed_bytes: int | None = None
+    request_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {
@@ -38,6 +39,8 @@ class DebugLogEntry:
             "latency_ms": round(self.latency_ms, 3),
             "success": self.success,
         }
+        if self.request_id is not None:
+            d["request_id"] = self.request_id
         if self.error is not None:
             d["error"] = self.error
         if self.retries > 0:
@@ -101,6 +104,7 @@ class DebugLogger:
             retries=result.retries,
             payload_bytes=payload_bytes,
             compressed_bytes=compressed_bytes,
+            request_id=result.request_id,
         )
         self._file.write(json.dumps(entry.to_dict(), ensure_ascii=False) + "\n")
         self._file.flush()
