@@ -93,6 +93,7 @@ _KNOWN_KEYS: set[str] = {
     "warmup",
     "compress",
     "request_id_prefix",
+    "anomaly_threshold",
 }
 
 # Deprecated keys (currently none, placeholder for future use)

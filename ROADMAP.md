@@ -331,3 +331,12 @@
 - Correlation between client-side and server-side logs
 - YAML config support (`request_id_prefix`)
 - Tests covering ID generation, header injection, echo, and export
+
+## M43: Request Latency Anomaly Detection ✅
+- `detect_anomalies()` function in `src/xpyd_bench/bench/anomaly.py` using IQR method
+- `--anomaly-threshold <float>` CLI flag (default 1.5, 0 disables)
+- BenchmarkResult includes `anomalies` dict field
+- JSON output includes `anomalies` section when anomalies found
+- Terminal summary prints anomaly count and worst offenders
+- YAML config support (`anomaly_threshold`)
+- Tests covering detection logic, threshold customization, no-anomaly case, disabled mode
