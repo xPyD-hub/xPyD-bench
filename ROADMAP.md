@@ -31,7 +31,7 @@
 - Poisson distribution — via YAML config
 - Custom pattern definition — via YAML config
 
-## M5: Rich Dataset Input ⬜
+## M5: Rich Dataset Input ✅
 - JSONL input format for user-defined datasets
 - JSON array input format
 - CSV input format
