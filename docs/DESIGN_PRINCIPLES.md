@@ -20,11 +20,12 @@ A comprehensive benchmarking tool for LLM inference endpoints, built as an enhan
 - **Extended metrics**: beyond what vLLM bench provides.
 - Think about what else users need that vLLM bench doesn't offer.
 
-## Dummy Server (for testing)
+## Dummy Server — Co-Evolution Rule (IMPORTANT)
 - A dummy prefill/decode server that simulates vLLM behavior for bench validation
 - Must support all OpenAI API endpoints that bench tests against
 - Streaming response simulation with configurable latency
 - Code must be decoupled from bench — separate module, no imports between them
+- **Every bench feature must have a corresponding dummy implementation.** When bench adds a new capability (new endpoint, new parameter, new request pattern), the dummy server MUST be updated in the same PR or the immediately following one. Bench and dummy mature together — never let dummy fall behind.
 - Goal: when dummy is mature, it migrates to the xPyD-simulator repo
 
 ## Principles
