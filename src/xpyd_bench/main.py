@@ -75,6 +75,7 @@ _SUBCOMMANDS = {
     "history",
     "distributed",
     "presets",
+    "batch",
 }
 
 
@@ -134,6 +135,10 @@ def main() -> None:
         distributed_main(rest)
     elif subcmd == "presets":
         _presets_subcommand(rest)
+    elif subcmd == "batch":
+        from xpyd_bench.cli import batch_main
+
+        batch_main(rest)
 
 
 def _config_subcommand(argv: list[str]) -> None:

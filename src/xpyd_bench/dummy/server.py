@@ -823,6 +823,150 @@ async def _handle_health(request: Request) -> JSONResponse:
 
 
 # ---------------------------------------------------------------------------
+# Batch API (M41)
+# ---------------------------------------------------------------------------
+
+# In-memory batch store for the dummy server
+_batches: dict[str, dict] = {}
+
+
+async def _handle_create_batch(request: Request) -> JSONResponse:
+    """Handle POST /v1/batches — create a batch job."""
+    body = await _parse_json_body(request)
+    cfg = _config
+
+    input_requests = body.get("input", [])
+    endpoint = body.get("endpoint", "/v1/completions")
+    model = body.get("model", cfg.model_name)
+    metadata = body.get("metadata", {})
+
+    batch_id = f"batch_{uuid.uuid4().hex[:16]}"
+    now = time.time()
+    queue_delay = cfg.prefill_ms / 1000.0  # Simulate queue time using prefill_ms
+
+    batch_obj: dict = {
+        "id": batch_id,
+        "object": "batch",
+        "endpoint": endpoint,
+        "model": model,
+        "status": "validating",
+        "created_at": now,
+        "in_progress_at": None,
+        "completed_at": None,
+        "request_counts": {
+            "total": len(input_requests),
+            "completed": 0,
+            "failed": 0,
+        },
+        "metadata": metadata,
+        "input": input_requests,
+        "results": [],
+        "errors": {"object": "list", "data": []},
+        "_queue_delay": queue_delay,
+        "_process_delay": cfg.decode_ms * len(input_requests) / 1000.0,
+    }
+    _batches[batch_id] = batch_obj
+
+    # Schedule async processing
+    asyncio.create_task(_process_batch(batch_id))
+
+    # Return initial state
+    return JSONResponse({
+        "id": batch_id,
+        "object": "batch",
+        "endpoint": endpoint,
+        "status": "validating",
+        "created_at": now,
+        "request_counts": batch_obj["request_counts"],
+        "metadata": metadata,
+    })
+
+
+async def _process_batch(batch_id: str) -> None:
+    """Simulate batch processing in the background."""
+    batch = _batches.get(batch_id)
+    if not batch:
+        return
+
+    cfg = _config
+    queue_delay = batch["_queue_delay"]
+    process_delay = batch["_process_delay"]
+
+    # Simulate queue time
+    await asyncio.sleep(queue_delay)
+    now = time.time()
+    batch["status"] = "in_progress"
+    batch["in_progress_at"] = now
+
+    # Simulate processing time
+    await asyncio.sleep(process_delay)
+
+    # Generate dummy results
+    results = []
+    input_requests = batch.get("input", [])
+    for req in input_requests:
+        custom_id = req.get("custom_id", "")
+        body = req.get("body", {})
+        max_tokens = body.get("max_tokens", cfg.max_tokens_default)
+        rng = random.Random(hash(custom_id) & 0xFFFFFFFF)
+        n_tokens = rng.randint(
+            max(1, int(max_tokens * cfg.eos_min_ratio)), max_tokens,
+        )
+        text = " ".join(
+            rng.choice(["the", "a", "an", "is", "was", "will", "be", "to"])
+            for _ in range(n_tokens)
+        )
+        results.append({
+            "custom_id": custom_id,
+            "response": {
+                "status_code": 200,
+                "body": {
+                    "choices": [{"text": text, "index": 0, "finish_reason": "stop"}],
+                    "usage": {
+                        "prompt_tokens": len(
+                            str(body.get("prompt", body.get("messages", ""))).split()
+                        ),
+                        "completion_tokens": n_tokens,
+                        "total_tokens": len(
+                            str(body.get("prompt", body.get("messages", ""))).split()
+                        ) + n_tokens,
+                    },
+                },
+            },
+        })
+
+    batch["results"] = results
+    batch["request_counts"]["completed"] = len(results)
+    batch["status"] = "completed"
+    batch["completed_at"] = time.time()
+
+
+async def _handle_retrieve_batch(request: Request) -> JSONResponse:
+    """Handle GET /v1/batches/{batch_id} — retrieve batch status."""
+    batch_id = request.path_params["batch_id"]
+    batch = _batches.get(batch_id)
+    if not batch:
+        return JSONResponse(
+            {"error": {"message": f"Batch {batch_id} not found", "type": "not_found"}},
+            status_code=404,
+        )
+
+    return JSONResponse({
+        "id": batch["id"],
+        "object": "batch",
+        "endpoint": batch["endpoint"],
+        "status": batch["status"],
+        "created_at": batch["created_at"],
+        "in_progress_at": batch.get("in_progress_at"),
+        "completed_at": batch.get("completed_at"),
+        "request_counts": batch["request_counts"],
+        "metadata": batch.get("metadata", {}),
+        "results": batch.get("results", []),
+        "errors": batch.get("errors", {"object": "list", "data": []}),
+    })
+
+
+# ---------------------------------------------------------------------------
 # App factory
 # ---------------------------------------------------------------------------
 
@@ -850,10 +994,15 @@ def create_app(config: ServerConfig | None = None) -> Starlette:
                     )
             return await call_next(request)
 
+    # Clear batch store on app creation
+    _batches.clear()
+
     routes = [
         Route("/v1/completions", _handle_completions, methods=["POST"]),
         Route("/v1/chat/completions", _handle_chat_completions, methods=["POST"]),
         Route("/v1/embeddings", _handle_embeddings, methods=["POST"]),
+        Route("/v1/batches", _handle_create_batch, methods=["POST"]),
+        Route("/v1/batches/{batch_id}", _handle_retrieve_batch, methods=["GET"]),
         Route("/v1/models", _handle_models, methods=["GET"]),
         Route("/health", _handle_health, methods=["GET"]),
     ]
