@@ -161,3 +161,24 @@
 - JSON output includes `sla_results` section with per-target pass/fail
 - YAML config support (`sla: <path>`)
 - Tests covering SLA pass, SLA fail, partial SLA, missing metrics
+
+## M21: Environment Info Capture
+- `collect_env_info()` utility in `src/xpyd_bench/bench/env.py`
+- Captures: Python version, OS, platform, CPU architecture, hostname, xpyd-bench version, ISO 8601 timestamp
+- `BenchmarkResult` includes `environment` dict field (auto-populated)
+- All saved JSON results include `environment` section
+- `--dry-run` output shows environment info
+- Tests covering environment info structure and presence
+
+## M22: Request Logging & Debug Mode
+- `--debug-log <path>` CLI flag to write per-request debug logs
+- Each log entry: timestamp, URL, payload (truncated), status code, latency, error
+- Useful for diagnosing failures in long benchmark runs
+- YAML config support (`debug_log`)
+- Tests covering log file creation and content
+
+## M23: Configuration Dump & Validation
+- `xpyd-bench config dump` subcommand to print resolved configuration (CLI + YAML merged)
+- `xpyd-bench config validate --config <path>` to validate YAML config without running
+- Print warnings for deprecated or conflicting options
+- Tests covering dump output and validation errors

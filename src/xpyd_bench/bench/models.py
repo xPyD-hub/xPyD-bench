@@ -76,3 +76,6 @@ class BenchmarkResult:
 
     # Partial result flag (set when benchmark was interrupted)
     partial: bool = False
+
+    # Environment metadata for reproducibility
+    environment: dict[str, str] = field(default_factory=dict)
