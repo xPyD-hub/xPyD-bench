@@ -606,15 +606,53 @@ def _resolve_custom_headers(args: argparse.Namespace) -> dict[str, str]:
     return headers
 
 
-def _load_yaml_config(path: str, args: argparse.Namespace) -> argparse.Namespace:
-    """Merge YAML config into args (CLI takes precedence)."""
+def _get_explicit_keys(
+    parser: argparse.ArgumentParser,
+    args: argparse.Namespace,
+) -> set[str]:
+    """Return the set of attribute names explicitly provided on the CLI.
+
+    Compares *args* against the parser defaults — any attribute whose value
+    differs from the default is considered explicitly provided.
+    """
+    defaults = vars(parser.parse_args([]))
+    return {k for k, v in vars(args).items() if v != defaults.get(k)}
+
+
+def _load_yaml_config(
+    path: str,
+    args: argparse.Namespace,
+    explicit_keys: set[str] | None = None,
+) -> argparse.Namespace:
+    """Merge YAML config into args (explicitly-provided CLI flags take precedence).
+
+    Parameters
+    ----------
+    path:
+        Path to the YAML configuration file.
+    args:
+        Parsed CLI namespace.
+    explicit_keys:
+        Set of attribute names that were explicitly provided on the command
+        line.  When given, only those keys are protected from YAML overrides.
+        When *None* (legacy call-sites), the function falls back to the
+        previous behaviour of skipping keys whose current value is not
+        ``None``.
+    """
     with open(path) as f:
         cfg = yaml.safe_load(f) or {}
     for key, value in cfg.items():
         attr = key.replace("-", "_")
-        # Only set if not explicitly provided on CLI
-        if getattr(args, attr, None) is None:
-            setattr(args, attr, value)
+        if explicit_keys is not None:
+            # Only skip keys the user explicitly typed on the CLI
+            if attr in explicit_keys:
+                continue
+            if hasattr(args, attr):
+                setattr(args, attr, value)
+        else:
+            # Legacy fallback: only set if current value is None
+            if getattr(args, attr, None) is None:
+                setattr(args, attr, value)
     return args
 
 
@@ -655,7 +693,8 @@ def bench_main(argv: list[str] | None = None) -> None:
 
     # Merge YAML config if provided
     if args.config:
-        args = _load_yaml_config(args.config, args)
+        explicit = _get_explicit_keys(parser, args)
+        args = _load_yaml_config(args.config, args, explicit_keys=explicit)
 
     base_url = _resolve_base_url(args)
 
@@ -848,7 +887,8 @@ def multi_main(argv: list[str] | None = None) -> None:
 
     # Merge YAML config if provided
     if args.config:
-        args = _load_yaml_config(args.config, args)
+        explicit = _get_explicit_keys(parser, args)
+        args = _load_yaml_config(args.config, args, explicit_keys=explicit)
 
     # Resolve API key
     import os
@@ -914,7 +954,8 @@ def profile_main(argv: list[str] | None = None) -> None:
 
     # Merge YAML config if provided
     if args.config:
-        args = _load_yaml_config(args.config, args)
+        explicit = _get_explicit_keys(parser, args)
+        args = _load_yaml_config(args.config, args, explicit_keys=explicit)
 
     import os
 
