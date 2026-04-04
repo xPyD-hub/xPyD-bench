@@ -39,6 +39,12 @@ def dummy_main(argv: list[str] | None = None) -> None:
         default=128,
         help="Default max_tokens when not specified in request (default: 128).",
     )
+    parser.add_argument(
+        "--eos-min-ratio",
+        type=float,
+        default=0.5,
+        help="Minimum fraction of max_tokens before EOS can fire (default: 0.5).",
+    )
     args = parser.parse_args(argv)
 
     import uvicorn
@@ -50,6 +56,7 @@ def dummy_main(argv: list[str] | None = None) -> None:
         decode_ms=args.decode_ms,
         model_name=args.model_name,
         max_tokens_default=args.max_tokens_default,
+        eos_min_ratio=args.eos_min_ratio,
     )
     app = create_app(config)
 
