@@ -170,7 +170,7 @@
 - `--dry-run` output shows environment info
 - Tests covering environment info structure and presence
 
-## M22: Request Logging & Debug Mode
+## M22: Request Logging & Debug Mode ✅
 - `--debug-log <path>` CLI flag to write per-request debug logs
 - Each log entry: timestamp, URL, payload (truncated), status code, latency, error
 - Useful for diagnosing failures in long benchmark runs
