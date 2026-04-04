@@ -20,6 +20,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+tokenizer = [
+    "tiktoken>=0.5.0",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
@@ -27,6 +30,7 @@ dev = [
     "isort>=5.13.0",
     "pre-commit>=3.6.0",
     "httpx>=0.27.0",
+    "tiktoken>=0.5.0",
 ]
 
 [project.scripts]

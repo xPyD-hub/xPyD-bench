@@ -394,6 +394,16 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Path to YAML file with SLA targets for validation.",
     )
 
+    # Tokenizer (M27)
+    parser.add_argument(
+        "--tokenizer",
+        type=str,
+        default=None,
+        help="Tiktoken model or encoding name for accurate token counting "
+        "(e.g. cl100k_base, gpt-4). Falls back to word-split when tiktoken "
+        "is not installed. (default: None = word-split)",
+    )
+
     # Extended config
     parser.add_argument(
         "--config",
@@ -518,6 +528,10 @@ def _dry_run(args: argparse.Namespace, base_url: str) -> None:
     print(f"  Seed:            {args.seed}")
     print(f"  Rate algorithm:  {args.rate_algorithm}")
 
+    # Tokenizer
+    tokenizer = getattr(args, "tokenizer", None)
+    print(f"  Tokenizer:       {tokenizer or '(word-split)'}")
+
     # Auth
     api_key_source = "none"
     if args.api_key:
@@ -561,9 +575,10 @@ def _dry_run(args: argparse.Namespace, base_url: str) -> None:
             input_len_dist=getattr(args, "synthetic_input_len_dist", "fixed"),
             output_len_dist=getattr(args, "synthetic_output_len_dist", "fixed"),
             seed=args.seed,
+            tokenizer=getattr(args, "tokenizer", None),
         )
         source = args.dataset_path or f"synthetic ({args.dataset_name})"
-        validate_and_report(entries, source)
+        validate_and_report(entries, source, tokenizer=getattr(args, "tokenizer", None))
     except (ValueError, FileNotFoundError) as exc:
         print(f"  ERROR: {exc}")
         raise SystemExit(1) from exc

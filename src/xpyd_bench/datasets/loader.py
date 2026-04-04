@@ -31,9 +31,15 @@ class DatasetEntry:
     output_len: int | None = None
 
 
-def _estimate_tokens(text: str) -> int:
-    """Estimate token count from text (word-based approximation)."""
-    return len(text.split())
+def _estimate_tokens(text: str, tokenizer: str | None = None) -> int:
+    """Estimate token count from text.
+
+    When *tokenizer* is provided and tiktoken is available, uses accurate
+    BPE tokenization.  Otherwise falls back to word-split approximation.
+    """
+    from xpyd_bench.tokenizer import count_tokens
+
+    return count_tokens(text, tokenizer=tokenizer)
 
 
 def _validate_entries(entries: list[DatasetEntry], source: str) -> None:
@@ -45,9 +51,19 @@ def _validate_entries(entries: list[DatasetEntry], source: str) -> None:
             raise ValueError(f"Empty prompt at index {i} in {source}")
 
 
-def compute_stats(entries: list[DatasetEntry]) -> DatasetStats:
-    """Compute summary statistics for dataset entries."""
-    prompt_lens = [_estimate_tokens(e.prompt) for e in entries]
+def compute_stats(
+    entries: list[DatasetEntry], tokenizer: str | None = None
+) -> DatasetStats:
+    """Compute summary statistics for dataset entries.
+
+    Parameters
+    ----------
+    entries:
+        Dataset entries to summarize.
+    tokenizer:
+        Optional tiktoken model/encoding name for accurate token counting.
+    """
+    prompt_lens = [_estimate_tokens(e.prompt, tokenizer=tokenizer) for e in entries]
     output_lens = [e.output_len for e in entries if e.output_len is not None]
 
     stats = DatasetStats(
@@ -163,17 +179,34 @@ def generate_synthetic(
     input_len_dist: str = "fixed",
     output_len_dist: str = "fixed",
     seed: int = 0,
+    tokenizer: str | None = None,
 ) -> list[DatasetEntry]:
     """Generate synthetic dataset with configurable length distributions.
 
     Supported distributions: fixed, uniform, normal, zipf.
     For uniform/normal/zipf, the given length is used as the mean/center.
+
+    When *tokenizer* is provided and tiktoken is available, prompts are
+    generated with exact token counts using BPE tokenization.
     """
     rng = random.Random(seed)
     entries: list[DatasetEntry] = []
 
     input_lens = _sample_lengths(num, input_len, input_len_dist, seed)
     output_lens = _sample_lengths(num, output_len, output_len_dist, seed + 1)
+
+    if tokenizer is not None:
+        from xpyd_bench.tokenizer import tiktoken_available, tokens_to_text
+
+        if tiktoken_available():
+            for i in range(num):
+                prompt = tokens_to_text(
+                    input_lens[i], tokenizer=tokenizer, seed=seed + i + 2
+                )
+                entries.append(
+                    DatasetEntry(prompt=prompt, output_len=output_lens[i])
+                )
+            return entries
 
     for i in range(num):
         prompt_words = [rng.choice(_VOCAB) for _ in range(input_lens[i])]
@@ -225,11 +258,18 @@ def load_dataset(
     input_len_dist: str = "fixed",
     output_len_dist: str = "fixed",
     seed: int = 0,
+    tokenizer: str | None = None,
 ) -> list[DatasetEntry]:
     """Load or generate a dataset.
 
     If *path* is given, detect format by extension (.jsonl, .json, .csv).
     Otherwise generate a synthetic dataset named *name*.
+
+    Parameters
+    ----------
+    tokenizer:
+        Optional tiktoken model/encoding for token-accurate synthetic
+        generation.
     """
     if path:
         p = Path(path)
@@ -255,16 +295,22 @@ def load_dataset(
         input_len_dist=input_len_dist,
         output_len_dist=output_len_dist,
         seed=seed,
+        tokenizer=tokenizer,
     )
 
 
-def validate_and_report(entries: list[DatasetEntry], source: str = "dataset") -> DatasetStats:
+def validate_and_report(
+    entries: list[DatasetEntry],
+    source: str = "dataset",
+    tokenizer: str | None = None,
+) -> DatasetStats:
     """Validate entries and print summary stats. Returns stats."""
     _validate_entries(entries, source)
-    stats = compute_stats(entries)
+    stats = compute_stats(entries, tokenizer=tokenizer)
+    counting_method = "tiktoken" if tokenizer is not None else "word-split"
     print(f"Dataset: {source}")
     print(f"  Entries:          {stats.count}")
-    print(f"  Avg prompt len:   {stats.avg_prompt_len:.1f} tokens (est.)")
+    print(f"  Avg prompt len:   {stats.avg_prompt_len:.1f} tokens ({counting_method})")
     print(f"  Min prompt len:   {stats.min_prompt_len}")
     print(f"  Max prompt len:   {stats.max_prompt_len}")
     if stats.avg_output_len is not None:

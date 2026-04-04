@@ -452,8 +452,9 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             input_len_dist=getattr(args, "synthetic_input_len_dist", "fixed"),
             output_len_dist=getattr(args, "synthetic_output_len_dist", "fixed"),
             seed=args.seed,
+            tokenizer=getattr(args, "tokenizer", None),
         )
-        validate_and_report(entries, dataset_path)
+        validate_and_report(entries, dataset_path, tokenizer=getattr(args, "tokenizer", None))
         prompts = [e.prompt for e in entries]
         # Override num_prompts to match actual dataset size
         args.num_prompts = len(prompts)
@@ -477,8 +478,12 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
                 input_len_dist=input_dist,
                 output_len_dist=output_dist,
                 seed=args.seed,
+                tokenizer=getattr(args, "tokenizer", None),
             )
-            validate_and_report(entries, f"synthetic ({dataset_name})")
+            tokenizer_arg = getattr(args, "tokenizer", None)
+            validate_and_report(
+                entries, f"synthetic ({dataset_name})", tokenizer=tokenizer_arg
+            )
             prompts = [e.prompt for e in entries]
             args.num_prompts = len(prompts)
         else:
