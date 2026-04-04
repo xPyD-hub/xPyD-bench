@@ -179,13 +179,23 @@
 
 ## M23: Configuration Dump & Validation ✅
 
-## M24: Unified CLI Subcommand Interface
+## M24: Unified CLI Subcommand Interface ✅
 - Single `xpyd-bench <subcommand>` entry point with subcommand routing
 - Subcommands: `run`, `compare`, `multi`, `profile`, `replay`, `config dump`, `config validate`
 - `xpyd-bench` with no subcommand defaults to `run` for backward compatibility
 - `--version` flag prints package version
 - Legacy standalone entry points still work but print deprecation warning
 - Tests covering subcommand routing, backward compat, version flag, deprecation warnings
+
+## M25: Result Aggregation Across Multiple Runs
+- `xpyd-bench aggregate <result1.json> <result2.json> ...` CLI subcommand
+- Compute mean, stddev, min, max across runs for key metrics (TTFT, TPOT, throughput, latency percentiles)
+- Coefficient of variation (CV) per metric to flag unstable benchmarks
+- `--output <path>` to save aggregated summary as JSON
+- `--min-runs N` to enforce minimum number of runs (default 2)
+- Detect and warn about outlier runs (>2 stddev from mean)
+- Human-readable table output with statistical summary
+- Tests covering aggregation math, outlier detection, CLI integration, edge cases
 - `xpyd-bench config dump` subcommand to print resolved configuration (CLI + YAML merged)
 - `xpyd-bench config validate --config <path>` to validate YAML config without running
 - Print warnings for deprecated or conflicting options

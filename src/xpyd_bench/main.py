@@ -71,6 +71,7 @@ _SUBCOMMANDS = {
     "profile",
     "replay",
     "config",
+    "aggregate",
 }
 
 
@@ -116,6 +117,10 @@ def main() -> None:
         replay_main(rest)
     elif subcmd == "config":
         _config_subcommand(rest)
+    elif subcmd == "aggregate":
+        from xpyd_bench.aggregate import aggregate_main
+
+        aggregate_main(rest)
 
 
 def _config_subcommand(argv: list[str]) -> None:
