@@ -208,7 +208,7 @@
 - Dummy server `/v1/embeddings` implementation with configurable vector dimensions
 - Tests covering embeddings benchmarking and dummy server
 
-## M27: Tokenizer-Accurate Token Counting
+## M27: Tokenizer-Accurate Token Counting ✅
 - Integrate `tiktoken` for accurate token counting (instead of word-split heuristic)
 - `--tokenizer <model>` CLI flag to select tokenizer (default: cl100k_base)
 - Accurate prompt_tokens and completion_tokens in all metrics
