@@ -370,6 +370,14 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         "Prints execution plan and exits.",
     )
 
+    # SLA validation (M20)
+    parser.add_argument(
+        "--sla",
+        type=str,
+        default=None,
+        help="Path to YAML file with SLA targets for validation.",
+    )
+
     # Extended config
     parser.add_argument(
         "--config",
@@ -715,6 +723,21 @@ def bench_main(argv: list[str] | None = None) -> None:
     # Save results if requested
     if args.save_result:
         _save_result(args, result)
+
+    # SLA validation (M20)
+    sla_path = getattr(args, "sla", None)
+    if sla_path:
+        from xpyd_bench.sla import (
+            format_sla_table,
+            load_sla_targets,
+            validate_sla,
+        )
+
+        targets = load_sla_targets(sla_path)
+        sla_report = validate_sla(bench_result, targets)
+        print(format_sla_table(sla_report))
+        if not sla_report.all_passed:
+            raise SystemExit(1)
 
 
 def compare_main(argv: list[str] | None = None) -> None:
