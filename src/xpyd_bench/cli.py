@@ -104,6 +104,25 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
     sampling.add_argument("--best-of", type=int, default=None)
     sampling.add_argument("--use-beam-search", action="store_true")
     sampling.add_argument("--logprobs", type=int, default=None)
+    sampling.add_argument(
+        "--stop",
+        type=str,
+        nargs="*",
+        default=None,
+        help="Stop sequence(s) for generation.",
+    )
+    sampling.add_argument(
+        "--n",
+        type=int,
+        default=None,
+        help="Number of completions to generate per request.",
+    )
+    sampling.add_argument(
+        "--api-seed",
+        type=int,
+        default=None,
+        help="Seed sent in API requests (deterministic generation).",
+    )
 
     # Output
     parser.add_argument(

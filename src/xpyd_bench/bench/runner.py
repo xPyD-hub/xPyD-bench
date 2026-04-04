@@ -235,6 +235,12 @@ def _build_payload(
         payload["logprobs"] = args.logprobs
     if args.ignore_eos:
         payload["ignore_eos"] = True
+    if getattr(args, "stop", None) is not None:
+        payload["stop"] = args.stop
+    if getattr(args, "n", None) is not None:
+        payload["n"] = args.n
+    if getattr(args, "api_seed", None) is not None:
+        payload["seed"] = args.api_seed
 
     return payload
 
