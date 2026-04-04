@@ -109,7 +109,7 @@
 - Consistent column ordering across formats
 - Tests covering all export paths, file content validation, and CLI integration
 
-## M15: Multi-Endpoint Comparison Mode
+## M15: Multi-Endpoint Comparison Mode ✅
 - `xpyd-bench multi --endpoints url1,url2 ...` to benchmark multiple endpoints in one run
 - Side-by-side summary table with per-endpoint metrics
 - Shared workload: same prompts, same ordering, same timing for fair comparison
