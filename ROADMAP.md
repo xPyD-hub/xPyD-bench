@@ -323,7 +323,7 @@
 - Dummy server `/v1/batch` implementation
 - Tests covering batch submission, polling, result retrieval, and metrics
 
-## M42: Request ID Tracking & Correlation ⬜
+## M42: Request ID Tracking & Correlation ✅
 - Auto-generate unique `X-Request-ID` header for each request
 - `--request-id-prefix <prefix>` CLI flag for custom prefixes
 - Request IDs in debug log, per-request export, and error messages
