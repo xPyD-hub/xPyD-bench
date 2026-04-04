@@ -73,11 +73,22 @@ def _load_result_summary(path: Path) -> dict | None:
         "mean_e2el_ms": data.get("mean_e2el_ms"),
         "partial": data.get("partial", False),
         "total_duration_s": data.get("total_duration_s", 0),
+        "tags": data.get("tags", {}),
     }
 
 
-def list_history(result_dir: str | Path, last_n: int | None = None) -> list[dict]:
+def list_history(
+    result_dir: str | Path,
+    last_n: int | None = None,
+    filter_tags: dict[str, str] | None = None,
+) -> list[dict]:
     """List benchmark results in *result_dir*, sorted by timestamp (newest last).
+
+    Parameters
+    ----------
+    filter_tags:
+        If provided, only include results whose ``tags`` contain all the
+        specified key-value pairs.
 
     Returns a list of summary dicts.
     """
@@ -90,6 +101,13 @@ def list_history(result_dir: str | Path, last_n: int | None = None) -> list[dict
         s = _load_result_summary(p)
         if s is not None:
             summaries.append(s)
+
+    # Filter by tags (M36)
+    if filter_tags:
+        summaries = [
+            s for s in summaries
+            if all(s.get("tags", {}).get(k) == v for k, v in filter_tags.items())
+        ]
 
     # Sort by timestamp
     summaries.sort(key=lambda s: s["timestamp"])
@@ -183,7 +201,24 @@ def history_main(argv: list[str] | None = None) -> None:
         metavar="N",
         help="Show only the last N runs.",
     )
+    parser.add_argument(
+        "--filter-tag",
+        action="append",
+        dest="filter_tags",
+        default=None,
+        metavar="KEY=VALUE",
+        help="Filter results by tag (repeatable). E.g. --filter-tag env=prod",
+    )
     args = parser.parse_args(argv)
 
-    summaries = list_history(args.result_dir, last_n=args.last)
+    # Parse filter tags
+    filter_tags: dict[str, str] | None = None
+    if args.filter_tags:
+        filter_tags = {}
+        for item in args.filter_tags:
+            if "=" in item:
+                k, v = item.split("=", 1)
+                filter_tags[k.strip()] = v.strip()
+
+    summaries = list_history(args.result_dir, last_n=args.last, filter_tags=filter_tags)
     print(format_history_table(summaries))

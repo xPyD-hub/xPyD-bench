@@ -953,4 +953,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["environment"] = r.environment
     if r.partial:
         d["partial"] = True
+    if r.tags:
+        d["tags"] = r.tags
     return d
