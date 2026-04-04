@@ -24,7 +24,7 @@
 - Validate no parameter is omitted vs OpenAI API spec
 - Dummy server must support all parameters too
 
-## M4: Flexible Request Rate Patterns ⬜
+## M4: Flexible Request Rate Patterns ✅
 - Per-second (vLLM bench compatible, CLI)
 - Per-N-seconds (5s, 10s, custom interval) — via YAML config
 - Burst patterns, ramp-up/ramp-down — via YAML config
