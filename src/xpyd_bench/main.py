@@ -76,6 +76,7 @@ _SUBCOMMANDS = {
     "distributed",
     "presets",
     "batch",
+    "sweep",
 }
 
 
@@ -139,6 +140,10 @@ def main() -> None:
         from xpyd_bench.cli import batch_main
 
         batch_main(rest)
+    elif subcmd == "sweep":
+        from xpyd_bench.sweep import sweep_main
+
+        sweep_main(rest)
 
 
 def _config_subcommand(argv: list[str]) -> None:

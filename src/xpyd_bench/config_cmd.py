@@ -94,6 +94,7 @@ _KNOWN_KEYS: set[str] = {
     "compress",
     "request_id_prefix",
     "anomaly_threshold",
+    "sweep",
 }
 
 # Deprecated keys (currently none, placeholder for future use)

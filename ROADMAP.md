@@ -340,3 +340,13 @@
 - Terminal summary prints anomaly count and worst offenders
 - YAML config support (`anomaly_threshold`)
 - Tests covering detection logic, threshold customization, no-anomaly case, disabled mode
+
+## M44: Concurrency Sweep Mode ✅
+- `xpyd-bench sweep --concurrency-range 1,2,4,8,16,32` CLI subcommand
+- `--concurrency-range` accepts comma-separated values or start:stop:step notation (e.g. `1:32:2x` for exponential)
+- Each concurrency level runs a full benchmark (`--sweep-prompts N`, default 100)
+- Summary table: concurrency vs throughput, mean latency, P99 latency, error rate
+- Identify and highlight optimal concurrency (max throughput with <=5% error rate)
+- JSON output with per-level results via `--sweep-output <path>`
+- YAML config support (`sweep` section)
+- Tests covering sweep orchestration, result aggregation, optimal detection, CLI integration
