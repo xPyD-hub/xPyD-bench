@@ -264,6 +264,15 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="[vLLM only] Ignore EOS token in generation. Not in OpenAI API spec.",
     )
 
+    # Warmup
+    parser.add_argument(
+        "--warmup",
+        type=int,
+        default=None,
+        help="Number of warmup requests before benchmark "
+        "(excluded from metrics). Default: 0.",
+    )
+
     # Extended config
     parser.add_argument(
         "--config",
