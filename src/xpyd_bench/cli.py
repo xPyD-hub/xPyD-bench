@@ -137,6 +137,30 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         default=None,
         help="Seed sent in API requests (deterministic generation).",
     )
+    sampling.add_argument(
+        "--echo",
+        action="store_true",
+        default=False,
+        help="Echo back the prompt in addition to the completion (completions only).",
+    )
+    sampling.add_argument(
+        "--suffix",
+        type=str,
+        default=None,
+        help="Suffix that comes after a completion of inserted text (completions only).",
+    )
+    sampling.add_argument(
+        "--logit-bias",
+        type=str,
+        default=None,
+        help="JSON string of token ID to bias value mappings, e.g. '{\"50256\": -100}'.",
+    )
+    sampling.add_argument(
+        "--user",
+        type=str,
+        default=None,
+        help="Unique identifier representing the end-user.",
+    )
 
     # Output
     parser.add_argument(

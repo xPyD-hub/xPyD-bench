@@ -241,6 +241,19 @@ def _build_payload(
         payload["n"] = args.n
     if getattr(args, "api_seed", None) is not None:
         payload["seed"] = args.api_seed
+    if getattr(args, "echo", False):
+        payload["echo"] = True
+    if getattr(args, "suffix", None) is not None:
+        payload["suffix"] = args.suffix
+    if getattr(args, "logit_bias", None) is not None:
+        import json as _json
+
+        if isinstance(args.logit_bias, str):
+            payload["logit_bias"] = _json.loads(args.logit_bias)
+        else:
+            payload["logit_bias"] = args.logit_bias
+    if getattr(args, "user", None) is not None:
+        payload["user"] = args.user
 
     return payload
 
