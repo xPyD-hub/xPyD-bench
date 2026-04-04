@@ -171,6 +171,19 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Path to YAML config file for extended options.",
     )
 
+    # Scenarios (M7)
+    parser.add_argument(
+        "--scenario",
+        type=str,
+        default=None,
+        help="Use a built-in scenario preset (short, long_context, mixed, stress).",
+    )
+    parser.add_argument(
+        "--list-scenarios",
+        action="store_true",
+        help="List available built-in scenarios and exit.",
+    )
+
     # Reporting (M6)
     reporting = parser.add_argument_group("reporting")
     reporting.add_argument(
@@ -234,6 +247,32 @@ def bench_main(argv: list[str] | None = None) -> None:
     )
     _add_vllm_compat_args(parser)
     args = parser.parse_args(argv)
+
+    # List scenarios and exit
+    if args.list_scenarios:
+        from xpyd_bench.scenarios import list_scenarios
+
+        scenarios = list_scenarios()
+        print("Available scenarios:\n")
+        for s in scenarios:
+            print(f"  {s.name:15s} {s.description}")
+            overrides = s.to_overrides()
+            for k, v in overrides.items():
+                print(f"    {k}: {v}")
+            print()
+        return
+
+    # Apply scenario defaults (CLI flags take precedence)
+    if args.scenario:
+        from xpyd_bench.scenarios import get_scenario
+
+        scenario = get_scenario(args.scenario)
+        overrides = scenario.to_overrides()
+        for key, value in overrides.items():
+            # Only apply if the user did not explicitly set the flag
+            current = getattr(args, key, None)
+            if current is None or current == parser.get_default(key):
+                setattr(args, key, value)
 
     # Merge YAML config if provided
     if args.config:
