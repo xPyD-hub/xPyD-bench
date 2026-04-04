@@ -260,7 +260,7 @@
 - External dashboards (Grafana, custom) can subscribe
 - Tests covering WebSocket server and metric streaming
 
-## M34: Prometheus / OpenMetrics Export
+## M34: Prometheus / OpenMetrics Export ✅
 - `--prometheus-export <path>` CLI flag to write metrics in Prometheus exposition format
 - Metrics: `xpyd_bench_ttft_seconds`, `xpyd_bench_tpot_seconds`, `xpyd_bench_request_latency_seconds` (histograms)
 - Metrics: `xpyd_bench_throughput_tokens_per_second` (gauge), `xpyd_bench_requests_total`, `xpyd_bench_errors_total` (counters)
