@@ -399,6 +399,12 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     is_streaming = is_chat  # streaming by default for chat endpoint
     url = f"{base_url}{args.endpoint}"
 
+    # Build default headers (authentication)
+    headers: dict[str, str] = {}
+    api_key = getattr(args, "api_key", None)
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
     # Generate or load prompts
     dataset_path = getattr(args, "dataset_path", None)
     if dataset_path:
@@ -483,7 +489,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         warmup_prompts = prompts[:warmup_count] if len(prompts) >= warmup_count else (
             prompts * ((warmup_count // len(prompts)) + 1)
         )[:warmup_count]
-        async with httpx.AsyncClient() as warmup_client:
+        async with httpx.AsyncClient(headers=headers) as warmup_client:
             for wi, wp in enumerate(warmup_prompts):
                 payload = _build_payload(args, wp, is_chat)
                 wr = await _send_request(warmup_client, url, payload, is_streaming)
@@ -505,7 +511,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             reporter.advance(success=r.success)
         return r
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(headers=headers) as client:
         for i, prompt in enumerate(prompts):
             if i > 0:
                 await asyncio.sleep(intervals[i])

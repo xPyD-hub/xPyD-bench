@@ -148,7 +148,7 @@ async def test_warmup_sends_extra_requests():
     call_idx = {"i": 0}
 
     class MultiClient:
-        def __init__(self):
+        def __init__(self, **kwargs):
             self.idx = call_idx["i"]
             call_idx["i"] += 1
             self._client = clients[self.idx] if self.idx < len(clients) else FakeAsyncClient()
@@ -182,7 +182,7 @@ async def test_warmup_excluded_from_metrics():
     call_idx = {"i": 0}
 
     class MultiClient:
-        def __init__(self):
+        def __init__(self, **kwargs):
             self.idx = call_idx["i"]
             call_idx["i"] += 1
             self._client = clients[self.idx] if self.idx < len(clients) else FakeAsyncClient()
@@ -268,7 +268,7 @@ async def test_warmup_with_chat_endpoint():
     call_idx = {"i": 0}
 
     class MultiClient:
-        def __init__(self):
+        def __init__(self, **kwargs):
             self.idx = call_idx["i"]
             call_idx["i"] += 1
             self._client = (

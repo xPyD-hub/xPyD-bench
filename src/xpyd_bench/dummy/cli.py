@@ -45,6 +45,12 @@ def dummy_main(argv: list[str] | None = None) -> None:
         default=0.5,
         help="Minimum fraction of max_tokens before EOS can fire (default: 0.5).",
     )
+    parser.add_argument(
+        "--require-api-key",
+        type=str,
+        default=None,
+        help="Require this API key for authentication. Returns 401 for missing/wrong key.",
+    )
     args = parser.parse_args(argv)
 
     import uvicorn
@@ -57,6 +63,7 @@ def dummy_main(argv: list[str] | None = None) -> None:
         model_name=args.model_name,
         max_tokens_default=args.max_tokens_default,
         eos_min_ratio=args.eos_min_ratio,
+        require_api_key=args.require_api_key,
     )
     app = create_app(config)
 
