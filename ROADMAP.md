@@ -140,3 +140,14 @@
 - Trace format captures: timestamps, prompt lengths, endpoint, inter-request delays
 - Deterministic replay for reproducible benchmarks across different servers
 - Tests covering profile recording, replay accuracy, and trace format validation
+
+## M19: Dry Run Mode
+- `--dry-run` CLI flag to validate configuration and dataset without sending HTTP requests
+- Print execution plan: resolved base URL, endpoint, model, dataset stats, rate config
+- Load and validate dataset (file or synthetic), report stats
+- Validate YAML config if provided
+- Print estimated benchmark duration based on num_prompts and request_rate
+- Exit with code 0 on success, non-zero on validation errors
+- YAML config support (`dry_run: true`)
+- Works with all existing CLI flags (scenarios, custom headers, auth, etc.)
+- Tests covering dry-run output, validation errors, and CLI integration
