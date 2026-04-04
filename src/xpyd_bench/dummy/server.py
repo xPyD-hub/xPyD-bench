@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import random
 import time
 import uuid
 from dataclasses import dataclass
@@ -84,23 +85,149 @@ def _make_chat_completion_id() -> str:
 
 
 # ---------------------------------------------------------------------------
+# Parameter validation
+# ---------------------------------------------------------------------------
+
+_PARAM_RANGES = {
+    "temperature": (0.0, 2.0),
+    "top_p": (0.0, 1.0),
+    "frequency_penalty": (-2.0, 2.0),
+    "presence_penalty": (-2.0, 2.0),
+}
+
+
+def _validate_params(body: dict) -> str | None:
+    """Validate request parameters. Returns error message or None."""
+    for param, (lo, hi) in _PARAM_RANGES.items():
+        if param in body and body[param] is not None:
+            val = body[param]
+            if not isinstance(val, (int, float)):
+                return f"'{param}' must be a number"
+            if val < lo or val > hi:
+                return f"'{param}' must be between {lo} and {hi}, got {val}"
+
+    n = body.get("n")
+    if n is not None:
+        if not isinstance(n, int) or n < 1:
+            return "'n' must be a positive integer"
+
+    max_tokens = body.get("max_tokens")
+    if max_tokens is not None:
+        if not isinstance(max_tokens, int) or max_tokens < 1:
+            return "'max_tokens' must be a positive integer"
+
+    best_of = body.get("best_of")
+    if best_of is not None:
+        if not isinstance(best_of, int) or best_of < 1:
+            return "'best_of' must be a positive integer"
+        n_val = body.get("n", 1)
+        if best_of < n_val:
+            return f"'best_of' ({best_of}) must be >= 'n' ({n_val})"
+
+    logprobs_val = body.get("logprobs")
+    if logprobs_val is not None:
+        # Completions: integer 0-5; Chat: boolean (handled separately)
+        if isinstance(logprobs_val, bool):
+            pass  # valid for chat
+        elif isinstance(logprobs_val, int):
+            if logprobs_val < 0 or logprobs_val > 5:
+                return "'logprobs' must be between 0 and 5"
+        else:
+            return "'logprobs' must be an integer (0-5) or boolean"
+
+    top_logprobs = body.get("top_logprobs")
+    if top_logprobs is not None:
+        if not isinstance(top_logprobs, int) or top_logprobs < 0 or top_logprobs > 20:
+            return "'top_logprobs' must be an integer between 0 and 20"
+
+    return None
+
+
+def _make_logprobs_data(token: str, num_logprobs: int = 1) -> dict:
+    """Generate dummy logprobs data for a token."""
+    log_prob = -random.uniform(0.01, 5.0)
+    top = [
+        {
+            "token": f"tok_{i}",
+            "logprob": -random.uniform(0.01, 10.0),
+            "bytes": list(f"tok_{i}".encode()),
+        }
+        for i in range(max(num_logprobs, 1))
+    ]
+    # Insert the actual token at position 0
+    top[0] = {
+        "token": token,
+        "logprob": log_prob,
+        "bytes": list(token.encode()),
+    }
+    return {
+        "token": token,
+        "logprob": log_prob,
+        "bytes": list(token.encode()),
+        "top_logprobs": top,
+    }
+
+
+def _check_stop(text: str, stop: list[str] | str | None) -> tuple[bool, str]:
+    """Check if any stop sequence is found in text.
+
+    Returns (should_stop, truncated_text).
+    """
+    if stop is None:
+        return False, text
+    if isinstance(stop, str):
+        stop = [stop]
+    for seq in stop:
+        idx = text.find(seq)
+        if idx >= 0:
+            return True, text[:idx]
+    return False, text
+
+
+# ---------------------------------------------------------------------------
 # /v1/completions
 # ---------------------------------------------------------------------------
 
 
 async def _handle_completions(request: Request) -> JSONResponse | StreamingResponse:
     body = await request.json()
+
+    # Validate parameters
+    err = _validate_params(body)
+    if err:
+        return JSONResponse(
+            {"error": {"message": err, "type": "invalid_request_error"}},
+            status_code=400,
+        )
+
     prompt = body.get("prompt", "")
     max_tokens = body.get("max_tokens", _config.max_tokens_default)
     stream = body.get("stream", False)
     model = body.get("model", _config.model_name)
     n = body.get("n", 1)
     seed = body.get("seed", None)
+    echo = body.get("echo", False)
+    stop = body.get("stop")
+    logprobs_count = body.get("logprobs")  # int or None
+    stream_options = body.get("stream_options") or {}
+    include_usage = stream_options.get("include_usage", False)
     prompt_tokens = _estimate_prompt_tokens(prompt, None)
+    prompt_text = _normalize_prompt(prompt)
 
     if stream:
         return StreamingResponse(
-            _stream_completions(model, prompt_tokens, max_tokens),
+            _stream_completions(
+                model,
+                prompt_tokens,
+                max_tokens,
+                n=n,
+                echo=echo,
+                prompt_text=prompt_text,
+                stop=stop,
+                logprobs_count=logprobs_count,
+                include_usage=include_usage,
+                seed=seed,
+            ),
             media_type="text/event-stream",
         )
 
@@ -108,15 +235,45 @@ async def _handle_completions(request: Request) -> JSONResponse | StreamingRespo
     total_ms = _config.prefill_ms + _config.decode_ms * max_tokens
     await asyncio.sleep(total_ms / 1000.0)
 
-    generated_text = " ".join(["token"] * max_tokens)
-    choices = [
-        {
+    choices = []
+    total_completion_tokens = 0
+    for i in range(n):
+        generated_text = " ".join(["token"] * max_tokens)
+        finish_reason = "length"
+        stopped, generated_text = _check_stop(generated_text, stop)
+        if stopped:
+            finish_reason = "stop"
+
+        if echo:
+            generated_text = prompt_text + generated_text
+
+        choice: dict = {
             "index": i,
             "text": generated_text,
-            "finish_reason": "length",
+            "finish_reason": finish_reason,
         }
-        for i in range(n)
-    ]
+
+        if logprobs_count is not None:
+            tokens = generated_text.split(" ") if generated_text else []
+            choice["logprobs"] = {
+                "tokens": tokens,
+                "token_logprobs": [-random.uniform(0.01, 5.0) for _ in tokens],
+                "top_logprobs": [
+                    {f"tok_{j}": -random.uniform(0.01, 10.0) for j in range(logprobs_count)}
+                    for _ in tokens
+                ],
+                "text_offset": list(range(0, len(generated_text), max(1, len(generated_text) // max(len(tokens), 1)))),  # noqa: E501
+            }
+
+        # Count completion tokens based on generated token count (not echo)
+        gen_token_count = len(generated_text.split()) if generated_text else 0
+        if echo and prompt_text:
+            # Subtract prompt tokens from word count
+            prompt_word_count = len(prompt_text.split()) if prompt_text else 0
+            gen_token_count = max(0, gen_token_count - prompt_word_count)
+        total_completion_tokens += gen_token_count
+        choices.append(choice)
+
     resp_body: dict = {
         "id": _make_completion_id(),
         "object": "text_completion",
@@ -125,8 +282,8 @@ async def _handle_completions(request: Request) -> JSONResponse | StreamingRespo
         "choices": choices,
         "usage": {
             "prompt_tokens": prompt_tokens,
-            "completion_tokens": max_tokens * n,
-            "total_tokens": prompt_tokens + max_tokens * n,
+            "completion_tokens": total_completion_tokens,
+            "total_tokens": prompt_tokens + total_completion_tokens,
         },
     }
     if seed is not None:
@@ -134,7 +291,19 @@ async def _handle_completions(request: Request) -> JSONResponse | StreamingRespo
     return JSONResponse(resp_body)
 
 
-async def _stream_completions(model: str, prompt_tokens: int, max_tokens: int):
+async def _stream_completions(
+    model: str,
+    prompt_tokens: int,
+    max_tokens: int,
+    *,
+    n: int = 1,
+    echo: bool = False,
+    prompt_text: str = "",
+    stop: list[str] | str | None = None,
+    logprobs_count: int | None = None,
+    include_usage: bool = False,
+    seed: int | None = None,
+):
     """Generate SSE stream for completions endpoint."""
     comp_id = _make_completion_id()
     created = int(time.time())
@@ -142,24 +311,101 @@ async def _stream_completions(model: str, prompt_tokens: int, max_tokens: int):
     # Prefill delay
     await asyncio.sleep(_config.prefill_ms / 1000.0)
 
-    for i in range(max_tokens):
-        chunk = {
+    total_completion_tokens = 0
+
+    for choice_idx in range(n):
+        # Echo prefix as first chunk if requested
+        if echo and prompt_text:
+            chunk: dict = {
+                "id": comp_id,
+                "object": "text_completion",
+                "created": created,
+                "model": model,
+                "choices": [
+                    {
+                        "index": choice_idx,
+                        "text": prompt_text,
+                        "finish_reason": None,
+                    }
+                ],
+            }
+            if seed is not None:
+                chunk["system_fingerprint"] = f"fp_seed_{seed}"
+            yield f"data: {json.dumps(chunk)}\n\n"
+
+        accumulated = ""
+        stopped = False
+        for i in range(max_tokens):
+            token_text = "token " if i < max_tokens - 1 else "token"
+            accumulated += token_text
+
+            # Check stop sequences
+            if stop:
+                stopped, _ = _check_stop(accumulated, stop)
+                if stopped:
+                    # Emit final chunk with stop reason
+                    choice_data: dict = {
+                        "index": choice_idx,
+                        "text": token_text,
+                        "finish_reason": "stop",
+                    }
+                    if logprobs_count is not None:
+                        choice_data["logprobs"] = _make_logprobs_data(
+                            token_text, logprobs_count
+                        )
+                    chunk = {
+                        "id": comp_id,
+                        "object": "text_completion",
+                        "created": created,
+                        "model": model,
+                        "choices": [choice_data],
+                    }
+                    if seed is not None:
+                        chunk["system_fingerprint"] = f"fp_seed_{seed}"
+                    total_completion_tokens += i + 1
+                    yield f"data: {json.dumps(chunk)}\n\n"
+                    break
+
+            is_last = i == max_tokens - 1
+            choice_data = {
+                "index": choice_idx,
+                "text": token_text,
+                "finish_reason": "length" if is_last else None,
+            }
+            if logprobs_count is not None:
+                choice_data["logprobs"] = _make_logprobs_data(token_text, logprobs_count)
+
+            chunk = {
+                "id": comp_id,
+                "object": "text_completion",
+                "created": created,
+                "model": model,
+                "choices": [choice_data],
+            }
+            if seed is not None:
+                chunk["system_fingerprint"] = f"fp_seed_{seed}"
+            yield f"data: {json.dumps(chunk)}\n\n"
+            await asyncio.sleep(_config.decode_ms / 1000.0)
+
+        if not stopped:
+            total_completion_tokens += max_tokens
+
+    # Include usage chunk if requested
+    if include_usage:
+        usage_chunk = {
             "id": comp_id,
             "object": "text_completion",
             "created": created,
             "model": model,
-            "choices": [
-                {
-                    "index": 0,
-                    "text": "token " if i < max_tokens - 1 else "token",
-                    "finish_reason": None if i < max_tokens - 1 else "length",
-                }
-            ],
+            "choices": [],
+            "usage": {
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": total_completion_tokens,
+                "total_tokens": prompt_tokens + total_completion_tokens,
+            },
         }
-        yield f"data: {json.dumps(chunk)}\n\n"
-        await asyncio.sleep(_config.decode_ms / 1000.0)
+        yield f"data: {json.dumps(usage_chunk)}\n\n"
 
-    # Include usage in final data before [DONE]
     yield "data: [DONE]\n\n"
 
 
@@ -170,17 +416,41 @@ async def _stream_completions(model: str, prompt_tokens: int, max_tokens: int):
 
 async def _handle_chat_completions(request: Request) -> JSONResponse | StreamingResponse:
     body = await request.json()
+
+    # Validate parameters
+    err = _validate_params(body)
+    if err:
+        return JSONResponse(
+            {"error": {"message": err, "type": "invalid_request_error"}},
+            status_code=400,
+        )
+
     messages = body.get("messages", [])
     max_tokens = body.get("max_tokens", _config.max_tokens_default)
     stream = body.get("stream", False)
     model = body.get("model", _config.model_name)
     n = body.get("n", 1)
     seed = body.get("seed", None)
+    stop = body.get("stop")
+    logprobs = body.get("logprobs", False)
+    top_logprobs = body.get("top_logprobs")
+    stream_options = body.get("stream_options") or {}
+    include_usage = stream_options.get("include_usage", False)
     prompt_tokens = _estimate_prompt_tokens(None, messages)
 
     if stream:
         return StreamingResponse(
-            _stream_chat_completions(model, prompt_tokens, max_tokens),
+            _stream_chat_completions(
+                model,
+                prompt_tokens,
+                max_tokens,
+                n=n,
+                stop=stop,
+                logprobs=logprobs,
+                top_logprobs=top_logprobs,
+                include_usage=include_usage,
+                seed=seed,
+            ),
             media_type="text/event-stream",
         )
 
@@ -188,15 +458,33 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
     total_ms = _config.prefill_ms + _config.decode_ms * max_tokens
     await asyncio.sleep(total_ms / 1000.0)
 
-    generated_text = " ".join(["token"] * max_tokens)
-    choices = [
-        {
+    choices = []
+    total_completion_tokens = 0
+    for i in range(n):
+        generated_text = " ".join(["token"] * max_tokens)
+        finish_reason = "length"
+        stopped, generated_text = _check_stop(generated_text, stop)
+        if stopped:
+            finish_reason = "stop"
+
+        choice: dict = {
             "index": i,
             "message": {"role": "assistant", "content": generated_text},
-            "finish_reason": "length",
+            "finish_reason": finish_reason,
         }
-        for i in range(n)
-    ]
+
+        if logprobs and top_logprobs is not None:
+            tokens = generated_text.split(" ") if generated_text else []
+            choice["logprobs"] = {
+                "content": [
+                    _make_logprobs_data(tok, top_logprobs) for tok in tokens
+                ],
+            }
+
+        gen_token_count = len(generated_text.split()) if generated_text else 0
+        total_completion_tokens += gen_token_count
+        choices.append(choice)
+
     resp_body: dict = {
         "id": _make_chat_completion_id(),
         "object": "chat.completion",
@@ -205,8 +493,8 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
         "choices": choices,
         "usage": {
             "prompt_tokens": prompt_tokens,
-            "completion_tokens": max_tokens * n,
-            "total_tokens": prompt_tokens + max_tokens * n,
+            "completion_tokens": total_completion_tokens,
+            "total_tokens": prompt_tokens + total_completion_tokens,
         },
     }
     if seed is not None:
@@ -214,7 +502,18 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
     return JSONResponse(resp_body)
 
 
-async def _stream_chat_completions(model: str, prompt_tokens: int, max_tokens: int):
+async def _stream_chat_completions(
+    model: str,
+    prompt_tokens: int,
+    max_tokens: int,
+    *,
+    n: int = 1,
+    stop: list[str] | str | None = None,
+    logprobs: bool = False,
+    top_logprobs: int | None = None,
+    include_usage: bool = False,
+    seed: int | None = None,
+):
     """Generate SSE stream for chat completions endpoint."""
     comp_id = _make_chat_completion_id()
     created = int(time.time())
@@ -222,24 +521,84 @@ async def _stream_chat_completions(model: str, prompt_tokens: int, max_tokens: i
     # Prefill delay
     await asyncio.sleep(_config.prefill_ms / 1000.0)
 
-    for i in range(max_tokens):
-        chunk = {
+    total_completion_tokens = 0
+
+    for choice_idx in range(n):
+        accumulated = ""
+        stopped = False
+        for i in range(max_tokens):
+            token_text = "token " if i < max_tokens - 1 else "token"
+            accumulated += token_text
+
+            # Check stop sequences
+            if stop:
+                stopped, _ = _check_stop(accumulated, stop)
+                if stopped:
+                    delta: dict = {"content": token_text}
+                    choice_data: dict = {
+                        "index": choice_idx,
+                        "delta": delta,
+                        "finish_reason": "stop",
+                    }
+                    if logprobs and top_logprobs is not None:
+                        choice_data["logprobs"] = {
+                            "content": [_make_logprobs_data(token_text, top_logprobs)]
+                        }
+                    chunk: dict = {
+                        "id": comp_id,
+                        "object": "chat.completion.chunk",
+                        "created": created,
+                        "model": model,
+                        "choices": [choice_data],
+                    }
+                    if seed is not None:
+                        chunk["system_fingerprint"] = f"fp_seed_{seed}"
+                    total_completion_tokens += i + 1
+                    yield f"data: {json.dumps(chunk)}\n\n"
+                    break
+
+            is_last = i == max_tokens - 1
+            delta = {"content": token_text}
+            choice_data = {
+                "index": choice_idx,
+                "delta": delta,
+                "finish_reason": "length" if is_last else None,
+            }
+            if logprobs and top_logprobs is not None:
+                choice_data["logprobs"] = {
+                    "content": [_make_logprobs_data(token_text, top_logprobs)]
+                }
+
+            chunk = {
+                "id": comp_id,
+                "object": "chat.completion.chunk",
+                "created": created,
+                "model": model,
+                "choices": [choice_data],
+            }
+            if seed is not None:
+                chunk["system_fingerprint"] = f"fp_seed_{seed}"
+            yield f"data: {json.dumps(chunk)}\n\n"
+            await asyncio.sleep(_config.decode_ms / 1000.0)
+
+        if not stopped:
+            total_completion_tokens += max_tokens
+
+    # Include usage chunk if requested
+    if include_usage:
+        usage_chunk = {
             "id": comp_id,
             "object": "chat.completion.chunk",
             "created": created,
             "model": model,
-            "choices": [
-                {
-                    "index": 0,
-                    "delta": {
-                        "content": "token " if i < max_tokens - 1 else "token",
-                    },
-                    "finish_reason": None if i < max_tokens - 1 else "length",
-                }
-            ],
+            "choices": [],
+            "usage": {
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": total_completion_tokens,
+                "total_tokens": prompt_tokens + total_completion_tokens,
+            },
         }
-        yield f"data: {json.dumps(chunk)}\n\n"
-        await asyncio.sleep(_config.decode_ms / 1000.0)
+        yield f"data: {json.dumps(usage_chunk)}\n\n"
 
     yield "data: [DONE]\n\n"
 
