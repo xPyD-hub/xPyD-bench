@@ -400,10 +400,14 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     is_streaming = is_chat  # streaming by default for chat endpoint
     url = f"{base_url}{args.endpoint}"
 
-    # Build default headers (authentication)
+    # Build default headers (authentication + custom)
     headers: dict[str, str] = {}
+    # Custom headers first (lower priority than auth unless explicitly overridden)
+    custom_headers = getattr(args, "custom_headers", None) or {}
+    headers.update(custom_headers)
+    # Auth header (can be overridden by custom headers if user explicitly sets Authorization)
     api_key = getattr(args, "api_key", None)
-    if api_key:
+    if api_key and "Authorization" not in custom_headers:
         headers["Authorization"] = f"Bearer {api_key}"
 
     # Generate or load prompts

@@ -302,6 +302,17 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Base delay between retries in seconds, with exponential backoff. Default: 1.0.",
     )
 
+    # Custom headers
+    parser.add_argument(
+        "--header",
+        type=str,
+        action="append",
+        default=None,
+        dest="header",
+        metavar="KEY:VALUE",
+        help='Custom HTTP header (repeatable). Format: "Key: Value".',
+    )
+
     # Extended config
     parser.add_argument(
         "--config",
@@ -366,6 +377,34 @@ def _resolve_base_url(args: argparse.Namespace) -> str:
     return f"http://{args.host}:{args.port}"
 
 
+def _parse_header(raw: str) -> tuple[str, str]:
+    """Parse a 'Key: Value' string into (key, value)."""
+    if ":" not in raw:
+        raise ValueError(f"Invalid header format (expected 'Key: Value'): {raw!r}")
+    key, value = raw.split(":", 1)
+    return key.strip(), value.strip()
+
+
+def _resolve_custom_headers(args: argparse.Namespace) -> dict[str, str]:
+    """Build custom headers dict from YAML config + CLI --header flags.
+
+    CLI headers take precedence over YAML ``headers`` dict.
+    """
+    headers: dict[str, str] = {}
+    # YAML headers (lower priority)
+    yaml_headers = getattr(args, "headers", None)
+    if isinstance(yaml_headers, dict):
+        for k, v in yaml_headers.items():
+            headers[str(k)] = str(v)
+    # CLI --header flags (higher priority)
+    cli_headers = getattr(args, "header", None)
+    if cli_headers:
+        for raw in cli_headers:
+            k, v = _parse_header(raw)
+            headers[k] = v
+    return headers
+
+
 def _load_yaml_config(path: str, args: argparse.Namespace) -> argparse.Namespace:
     """Merge YAML config into args (CLI takes precedence)."""
     with open(path) as f:
@@ -424,6 +463,9 @@ def bench_main(argv: list[str] | None = None) -> None:
 
     if args.api_key is None:
         args.api_key = os.environ.get("OPENAI_API_KEY")
+
+    # Resolve custom headers: YAML + CLI (CLI wins)
+    args.custom_headers = _resolve_custom_headers(args)
 
     from xpyd_bench import __version__
     from xpyd_bench.bench.runner import run_benchmark

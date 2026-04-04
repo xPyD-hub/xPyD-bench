@@ -93,3 +93,10 @@
 - `--save-result` saves partial results
 - Compare tool warns when comparing partial results
 - Tests covering graceful shutdown, partial metrics, and compare warnings
+
+## M13: Custom HTTP Headers
+- `--header "Key: Value"` CLI flag (repeatable) for arbitrary HTTP headers
+- YAML config support (`headers: {"X-Custom": "value"}`)
+- Headers merged with internal headers (Authorization); user headers take precedence
+- Dummy server echoes received custom headers in response metadata for validation
+- Tests covering CLI parsing, header injection, YAML config, precedence, and dummy echo
