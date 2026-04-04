@@ -527,6 +527,13 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Write per-request debug logs (JSONL) for diagnosing failures.",
     )
     reporting.add_argument(
+        "--metrics-ws-port",
+        type=int,
+        default=None,
+        metavar="PORT",
+        help="Expose live metrics via WebSocket on the given port during benchmark.",
+    )
+    reporting.add_argument(
         "--rich-progress",
         action="store_true",
         help="Use rich progress bar and summary table.",
