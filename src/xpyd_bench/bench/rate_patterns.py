@@ -192,19 +192,25 @@ def _custom_intervals(
     rng = np.random.RandomState(seed)
     intervals: list[float] = []
     idx = 0
+    idle_carry = 0.0  # accumulated idle time to prepend to next request
 
     while len(intervals) < num:
         rate = schedule[idx % len(schedule)]
         idx += 1
         if rate <= 0:
-            # Idle second — emit one request after 1s pause
-            intervals.append(1.0)
+            # Idle second — skip without scheduling any request.
+            # Accumulate the idle time onto the next real request's delay.
+            idle_carry += 1.0
             continue
         # Generate ~rate requests within this 1-second window
         n_in_sec = max(1, round(rate))
         n_in_sec = min(n_in_sec, num - len(intervals))
         gap = 1.0 / rate
         gaps = rng.exponential(gap, size=n_in_sec).tolist()
+        # Add accumulated idle time to the first request after idle period
+        if idle_carry > 0 and gaps:
+            gaps[0] += idle_carry
+            idle_carry = 0.0
         intervals.extend(gaps)
 
     return intervals[:num]
