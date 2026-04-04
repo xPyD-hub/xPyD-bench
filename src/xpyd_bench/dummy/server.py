@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import gzip
 import json
 import random
 import time
@@ -13,6 +14,15 @@ from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse, StreamingResponse
 from starlette.routing import Route
+
+
+async def _parse_json_body(request: Request) -> dict:
+    """Parse JSON body, handling gzip Content-Encoding transparently."""
+    raw = await request.body()
+    encoding = request.headers.get("content-encoding", "").lower()
+    if encoding == "gzip":
+        raw = gzip.decompress(raw)
+    return json.loads(raw)
 
 
 @dataclass
@@ -232,7 +242,7 @@ def _check_stop(text: str, stop: list[str] | str | None) -> tuple[bool, str]:
 
 async def _handle_completions(request: Request) -> JSONResponse | StreamingResponse:
     try:
-        body = await request.json()
+        body = await _parse_json_body(request)
     except Exception:
         return JSONResponse(
             {
@@ -480,7 +490,7 @@ async def _stream_completions(
 
 async def _handle_chat_completions(request: Request) -> JSONResponse | StreamingResponse:
     try:
-        body = await request.json()
+        body = await _parse_json_body(request)
     except Exception:
         return JSONResponse(
             {
@@ -750,7 +760,7 @@ async def _handle_models(request: Request) -> JSONResponse:
 async def _handle_embeddings(request: Request) -> JSONResponse:
     """Handle POST /v1/embeddings — return random embedding vectors."""
     cfg = _config
-    body = await request.json()
+    body = await _parse_json_body(request)
 
     model = body.get("model", cfg.model_name)
     raw_input = body.get("input", "")

@@ -335,6 +335,14 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Base delay between retries in seconds, with exponential backoff. Default: 1.0.",
     )
 
+    # Request compression (M40)
+    parser.add_argument(
+        "--compress",
+        action="store_true",
+        default=False,
+        help="Enable gzip compression of request bodies (Content-Encoding: gzip).",
+    )
+
     # Custom headers
     parser.add_argument(
         "--header",

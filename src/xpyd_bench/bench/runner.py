@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import gzip
 import json
 import random
 import signal
@@ -142,6 +143,24 @@ def _is_retryable(exc: Exception) -> bool:
     return False
 
 
+def _compressed_request_kwargs(
+    payload: dict[str, Any],
+    compress: bool,
+) -> dict[str, Any]:
+    """Build request kwargs, optionally gzip-compressing the body."""
+    if not compress:
+        return {"json": payload}
+    raw = json.dumps(payload).encode()
+    compressed = gzip.compress(raw)
+    return {
+        "content": compressed,
+        "headers": {
+            "Content-Encoding": "gzip",
+            "Content-Type": "application/json",
+        },
+    }
+
+
 async def _send_request(
     client: httpx.AsyncClient,
     url: str,
@@ -150,6 +169,7 @@ async def _send_request(
     request_timeout: float = 300.0,
     retries: int = 0,
     retry_delay: float = 1.0,
+    compress: bool = False,
 ) -> RequestResult:
     """Send one request and collect metrics, with optional retry."""
     last_result = RequestResult()
@@ -164,10 +184,12 @@ async def _send_request(
         try:
             if is_streaming:
                 result = await _send_streaming(
-                    client, url, payload, start, request_timeout=request_timeout
+                    client, url, payload, start, request_timeout=request_timeout,
+                    compress=compress,
                 )
             else:
-                resp = await client.post(url, json=payload, timeout=request_timeout)
+                req_kw = _compressed_request_kwargs(payload, compress)
+                resp = await client.post(url, **req_kw, timeout=request_timeout)
                 resp.raise_for_status()
                 end = time.perf_counter()
                 result.latency_ms = (end - start) * 1000.0
@@ -207,6 +229,7 @@ async def _send_streaming(
     payload: dict[str, Any],
     start: float,
     request_timeout: float = 300.0,
+    compress: bool = False,
 ) -> RequestResult:
     """Send a streaming request, measure TTFT / ITL."""
     result = RequestResult()
@@ -218,7 +241,8 @@ async def _send_streaming(
     stream_usage: dict[str, Any] | None = None
 
     try:
-        async with client.stream("POST", url, json=payload, timeout=request_timeout) as resp:
+        req_kw = _compressed_request_kwargs(payload, compress)
+        async with client.stream("POST", url, **req_kw, timeout=request_timeout) as resp:
             resp.raise_for_status()
             async for line in resp.aiter_lines():
                 if not line.startswith("data: "):
@@ -591,6 +615,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     request_timeout = getattr(args, "timeout", 300.0) or 300.0
     req_retries = getattr(args, "retries", 0) or 0
     req_retry_delay = getattr(args, "retry_delay", 1.0) or 1.0
+    req_compress = getattr(args, "compress", False) or False
 
     def _mk_payload(prompt: str) -> dict[str, Any]:
         if use_plugin:
@@ -615,6 +640,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             request_timeout=request_timeout,
             retries=req_retries,
             retry_delay=req_retry_delay,
+            compress=req_compress,
         )
 
     async def _task(client: httpx.AsyncClient, prompt: str) -> RequestResult:
@@ -705,7 +731,15 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         payload = _mk_payload(prompt)
         r = await _task(client, prompt)
         if debug_logger:
-            debug_logger.log(url, payload, r)
+            p_bytes: int | None = None
+            c_bytes: int | None = None
+            if req_compress:
+                import gzip as _gzip
+
+                raw = json.dumps(payload).encode()
+                p_bytes = len(raw)
+                c_bytes = len(_gzip.compress(raw))
+            debug_logger.log(url, payload, r, payload_bytes=p_bytes, compressed_bytes=c_bytes)
         if reporter:
             latency = r.latency * 1000 if r.latency is not None else None
             if isinstance(reporter, _LiveDashboardType):
