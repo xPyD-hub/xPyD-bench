@@ -313,6 +313,54 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help='Custom HTTP header (repeatable). Format: "Key: Value".',
     )
 
+    # Rate algorithm (M16)
+    parser.add_argument(
+        "--rate-algorithm",
+        type=str,
+        default="default",
+        choices=["default", "token-bucket"],
+        help="Rate limiting algorithm. 'default' uses sleep-based Poisson scheduling, "
+        "'token-bucket' uses a token bucket for smoother rate control (default: default).",
+    )
+    parser.add_argument(
+        "--token-bucket-burst",
+        type=float,
+        default=None,
+        help="Token bucket burst capacity. Defaults to --request-rate value.",
+    )
+
+    # Adaptive concurrency (M16)
+    parser.add_argument(
+        "--adaptive-concurrency",
+        action="store_true",
+        default=False,
+        help="Enable adaptive concurrency adjustment based on server response latency.",
+    )
+    parser.add_argument(
+        "--adaptive-target-latency",
+        type=float,
+        default=500.0,
+        help="Target latency in ms for adaptive concurrency (default: 500).",
+    )
+    parser.add_argument(
+        "--adaptive-min-concurrency",
+        type=int,
+        default=1,
+        help="Minimum concurrency for adaptive mode (default: 1).",
+    )
+    parser.add_argument(
+        "--adaptive-max-concurrency",
+        type=int,
+        default=256,
+        help="Maximum concurrency for adaptive mode (default: 256).",
+    )
+    parser.add_argument(
+        "--adaptive-initial-concurrency",
+        type=int,
+        default=16,
+        help="Initial concurrency for adaptive mode (default: 16).",
+    )
+
     # Extended config
     parser.add_argument(
         "--config",

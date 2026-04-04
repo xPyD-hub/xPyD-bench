@@ -432,14 +432,36 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         prompts = _generate_random_prompts(args.num_prompts, args.input_len, args.seed)
 
     # Generate inter-arrival intervals
+    rate_algorithm = getattr(args, "rate_algorithm", "default")
     rate_pattern = getattr(args, "rate_pattern", None)
-    if rate_pattern and isinstance(rate_pattern, dict):
+    token_bucket = None
+
+    if rate_algorithm == "token-bucket" and args.request_rate != float("inf"):
+        from xpyd_bench.bench.token_bucket import TokenBucket
+
+        burst = getattr(args, "token_bucket_burst", None) or args.request_rate
+        token_bucket = TokenBucket(rate=args.request_rate, burst=burst)
+        intervals = [0.0] * args.num_prompts  # token bucket handles pacing
+    elif rate_pattern and isinstance(rate_pattern, dict):
         from xpyd_bench.bench.rate_patterns import generate_pattern_intervals
 
         intervals = generate_pattern_intervals(args.num_prompts, rate_pattern, args.seed)
     else:
         intervals = _generate_intervals(
             args.num_prompts, args.request_rate, args.burstiness, args.seed
+        )
+
+    # Adaptive concurrency limiter (M16)
+    adaptive_limiter = None
+    use_adaptive = getattr(args, "adaptive_concurrency", False)
+    if use_adaptive:
+        from xpyd_bench.bench.token_bucket import AdaptiveConcurrencyLimiter
+
+        adaptive_limiter = AdaptiveConcurrencyLimiter(
+            initial=getattr(args, "adaptive_initial_concurrency", 16),
+            min_concurrency=getattr(args, "adaptive_min_concurrency", 1),
+            max_concurrency=getattr(args, "adaptive_max_concurrency", 256),
+            target_latency_ms=getattr(args, "adaptive_target_latency", 500.0),
         )
 
     # Concurrency limiter
@@ -463,6 +485,19 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     req_retry_delay = getattr(args, "retry_delay", 1.0) or 1.0
 
     async def _task(client: httpx.AsyncClient, prompt: str) -> RequestResult:
+        if adaptive_limiter:
+            await adaptive_limiter.acquire()
+            try:
+                r = await _send_request(
+                    client, url, _build_payload(args, prompt, is_chat), is_streaming,
+                    request_timeout=request_timeout,
+                    retries=req_retries,
+                    retry_delay=req_retry_delay,
+                )
+            finally:
+                adaptive_limiter.release()
+            await adaptive_limiter.record_latency(r.latency_ms)
+            return r
         if semaphore:
             async with semaphore:
                 return await _send_request(
@@ -539,7 +574,10 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             if shutdown_requested:
                 break
             if i > 0:
-                await asyncio.sleep(intervals[i])
+                if token_bucket:
+                    await token_bucket.acquire()
+                else:
+                    await asyncio.sleep(intervals[i])
                 if shutdown_requested:
                     break
             task = asyncio.create_task(_tracked_task(client, prompt))
