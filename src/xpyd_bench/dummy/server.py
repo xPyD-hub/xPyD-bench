@@ -25,6 +25,7 @@ class ServerConfig:
     max_tokens_default: int = 128
     eos_min_ratio: float = 0.5  # EOS won't fire before this fraction of max_tokens
     require_api_key: str | None = None  # If set, require this API key for auth
+    embedding_dim: int = 1536  # Dimensionality for embedding vectors
 
 
 # Global config — set before starting the server
@@ -746,6 +747,67 @@ async def _handle_models(request: Request) -> JSONResponse:
 # ---------------------------------------------------------------------------
 
 
+async def _handle_embeddings(request: Request) -> JSONResponse:
+    """Handle POST /v1/embeddings — return random embedding vectors."""
+    cfg = _config
+    body = await request.json()
+
+    model = body.get("model", cfg.model_name)
+    raw_input = body.get("input", "")
+    encoding_format = body.get("encoding_format", "float")
+
+    # Normalize input to list of strings
+    if isinstance(raw_input, str):
+        inputs = [raw_input]
+    elif isinstance(raw_input, list):
+        inputs = [str(item) for item in raw_input]
+    else:
+        inputs = [str(raw_input)]
+
+    # Simulate prefill latency per input
+    if cfg.prefill_ms > 0:
+        await asyncio.sleep(cfg.prefill_ms * len(inputs) / 1000.0)
+
+    # Count tokens (simple word-split approximation)
+    total_tokens = sum(len(text.split()) for text in inputs)
+
+    data = []
+    for i, text in enumerate(inputs):
+        # Deterministic pseudo-random vector based on input text
+        rng = random.Random(hash(text) & 0xFFFFFFFF)
+        vector = [rng.gauss(0, 1) for _ in range(cfg.embedding_dim)]
+
+        if encoding_format == "base64":
+            import base64
+            import struct
+
+            raw_bytes = struct.pack(f"{len(vector)}f", *vector)
+            embedding_value = base64.b64encode(raw_bytes).decode("ascii")
+        else:
+            embedding_value = vector
+
+        data.append({
+            "object": "embedding",
+            "index": i,
+            "embedding": embedding_value,
+        })
+
+    custom = _extract_custom_headers(request)
+    response_body: dict = {
+        "object": "list",
+        "data": data,
+        "model": model,
+        "usage": {
+            "prompt_tokens": total_tokens,
+            "total_tokens": total_tokens,
+        },
+    }
+    if custom:
+        response_body["_echoed_headers"] = custom
+
+    return JSONResponse(response_body)
+
+
 async def _handle_health(request: Request) -> JSONResponse:
     return JSONResponse({"status": "ok"})
 
@@ -781,6 +843,7 @@ def create_app(config: ServerConfig | None = None) -> Starlette:
     routes = [
         Route("/v1/completions", _handle_completions, methods=["POST"]),
         Route("/v1/chat/completions", _handle_chat_completions, methods=["POST"]),
+        Route("/v1/embeddings", _handle_embeddings, methods=["POST"]),
         Route("/v1/models", _handle_models, methods=["GET"]),
         Route("/health", _handle_health, methods=["GET"]),
     ]

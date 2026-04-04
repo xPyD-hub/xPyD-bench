@@ -51,6 +51,12 @@ def dummy_main(argv: list[str] | None = None) -> None:
         default=None,
         help="Require this API key for authentication. Returns 401 for missing/wrong key.",
     )
+    parser.add_argument(
+        "--embedding-dim",
+        type=int,
+        default=1536,
+        help="Dimensionality of embedding vectors (default: 1536).",
+    )
     args = parser.parse_args(argv)
 
     import uvicorn
@@ -64,6 +70,7 @@ def dummy_main(argv: list[str] | None = None) -> None:
         max_tokens_default=args.max_tokens_default,
         eos_min_ratio=args.eos_min_ratio,
         require_api_key=args.require_api_key,
+        embedding_dim=args.embedding_dim,
     )
     app = create_app(config)
 
