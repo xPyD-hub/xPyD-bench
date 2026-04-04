@@ -3,6 +3,11 @@
 ## Core Positioning
 A comprehensive benchmarking tool for LLM inference endpoints, built as an enhancement on top of vLLM bench.
 
+## CLI Compatibility
+- **CLI arguments must be fully compatible with vLLM bench** — users can switch from `python benchmark_serving.py` to `xpyd-bench` without changing their command line
+- Extended features beyond vLLM bench CLI should be configured via **YAML config file** (`--config config.yaml`)
+- Basic usage = CLI only (vLLM bench compatible), advanced usage = CLI + YAML
+
 ## Alignment with vLLM Bench
 - CLI arguments must align with vLLM bench where applicable
 - Output format must align with vLLM bench
@@ -18,6 +23,7 @@ A comprehensive benchmarking tool for LLM inference endpoints, built as an enhan
 ## Dummy Server (for testing)
 - A dummy prefill/decode server that simulates vLLM behavior for bench validation
 - Must support all OpenAI API endpoints that bench tests against
+- Streaming response simulation with configurable latency
 - Code must be decoupled from bench — separate module, no imports between them
 - Goal: when dummy is mature, it migrates to the xPyD-simulator repo
 
@@ -28,7 +34,7 @@ A comprehensive benchmarking tool for LLM inference endpoints, built as an enhan
 - **Rigorous**: every parameter, every edge case matters
 
 ## Rules
-- Committer must be `hlin99 <hlin99@gmail.com>`
+- Committer must be `hlin99 <tony.lin@intel.com>`
 - All code, docs, issues, PRs in English
 - Commit messages: conventional commits format
 - Code in `src/xpyd_bench/`, tests in `tests/`
