@@ -34,14 +34,41 @@ def set_config(config: ServerConfig) -> None:
     _config = config
 
 
+def _normalize_prompt(prompt: str | list | None) -> str:
+    """Normalize all 4 OpenAI prompt formats to a single string.
+
+    Supported formats:
+      1. string
+      2. array of strings
+      3. array of token integers
+      4. array of mixed strings/token-arrays
+    """
+    if prompt is None:
+        return ""
+    if isinstance(prompt, str):
+        return prompt
+    if isinstance(prompt, list):
+        parts: list[str] = []
+        for item in prompt:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, int):
+                # Token id — represent as placeholder text
+                parts.append(f"<tok:{item}>")
+            elif isinstance(item, list):
+                # Sub-array of token ids
+                parts.append("".join(f"<tok:{t}>" for t in item))
+            else:
+                parts.append(str(item))
+        return " ".join(parts)
+    return str(prompt)
+
+
 def _estimate_prompt_tokens(prompt: str | list | None, messages: list | None) -> int:
     """Rough token count estimation (~4 chars per token)."""
     if prompt is not None:
-        if isinstance(prompt, str):
-            return max(1, len(prompt) // 4)
-        if isinstance(prompt, list):
-            total = sum(len(str(p)) for p in prompt)
-            return max(1, total // 4)
+        text = _normalize_prompt(prompt)
+        return max(1, len(text) // 4)
     if messages is not None:
         total = sum(len(m.get("content", "")) for m in messages)
         return max(1, total // 4)
@@ -67,6 +94,8 @@ async def _handle_completions(request: Request) -> JSONResponse | StreamingRespo
     max_tokens = body.get("max_tokens", _config.max_tokens_default)
     stream = body.get("stream", False)
     model = body.get("model", _config.model_name)
+    n = body.get("n", 1)
+    seed = body.get("seed", None)
     prompt_tokens = _estimate_prompt_tokens(prompt, None)
 
     if stream:
@@ -80,24 +109,29 @@ async def _handle_completions(request: Request) -> JSONResponse | StreamingRespo
     await asyncio.sleep(total_ms / 1000.0)
 
     generated_text = " ".join(["token"] * max_tokens)
-    return JSONResponse({
+    choices = [
+        {
+            "index": i,
+            "text": generated_text,
+            "finish_reason": "length",
+        }
+        for i in range(n)
+    ]
+    resp_body: dict = {
         "id": _make_completion_id(),
         "object": "text_completion",
         "created": int(time.time()),
         "model": model,
-        "choices": [
-            {
-                "index": 0,
-                "text": generated_text,
-                "finish_reason": "length",
-            }
-        ],
+        "choices": choices,
         "usage": {
             "prompt_tokens": prompt_tokens,
-            "completion_tokens": max_tokens,
-            "total_tokens": prompt_tokens + max_tokens,
+            "completion_tokens": max_tokens * n,
+            "total_tokens": prompt_tokens + max_tokens * n,
         },
-    })
+    }
+    if seed is not None:
+        resp_body["system_fingerprint"] = f"fp_seed_{seed}"
+    return JSONResponse(resp_body)
 
 
 async def _stream_completions(model: str, prompt_tokens: int, max_tokens: int):
@@ -140,6 +174,8 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
     max_tokens = body.get("max_tokens", _config.max_tokens_default)
     stream = body.get("stream", False)
     model = body.get("model", _config.model_name)
+    n = body.get("n", 1)
+    seed = body.get("seed", None)
     prompt_tokens = _estimate_prompt_tokens(None, messages)
 
     if stream:
@@ -153,24 +189,29 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
     await asyncio.sleep(total_ms / 1000.0)
 
     generated_text = " ".join(["token"] * max_tokens)
-    return JSONResponse({
+    choices = [
+        {
+            "index": i,
+            "message": {"role": "assistant", "content": generated_text},
+            "finish_reason": "length",
+        }
+        for i in range(n)
+    ]
+    resp_body: dict = {
         "id": _make_chat_completion_id(),
         "object": "chat.completion",
         "created": int(time.time()),
         "model": model,
-        "choices": [
-            {
-                "index": 0,
-                "message": {"role": "assistant", "content": generated_text},
-                "finish_reason": "length",
-            }
-        ],
+        "choices": choices,
         "usage": {
             "prompt_tokens": prompt_tokens,
-            "completion_tokens": max_tokens,
-            "total_tokens": prompt_tokens + max_tokens,
+            "completion_tokens": max_tokens * n,
+            "total_tokens": prompt_tokens + max_tokens * n,
         },
-    })
+    }
+    if seed is not None:
+        resp_body["system_fingerprint"] = f"fp_seed_{seed}"
+    return JSONResponse(resp_body)
 
 
 async def _stream_chat_completions(model: str, prompt_tokens: int, max_tokens: int):
