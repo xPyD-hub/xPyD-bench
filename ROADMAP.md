@@ -152,7 +152,7 @@
 - Works with all existing CLI flags (scenarios, custom headers, auth, etc.)
 - Tests covering dry-run output, validation errors, and CLI integration
 
-## M20: SLA Validation Mode
+## M20: SLA Validation Mode ✅
 - `--sla <path>` CLI flag to load SLA targets from a YAML file
 - SLA file defines thresholds: max P99 TTFT, max P95 e2e latency, min throughput, max error rate
 - After benchmark completes, validate results against SLA targets
