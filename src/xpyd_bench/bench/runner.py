@@ -307,9 +307,15 @@ async def run_benchmark(args: Namespace, base_url: str) -> dict:
     prompts = _generate_random_prompts(args.num_prompts, args.input_len, args.seed)
 
     # Generate inter-arrival intervals
-    intervals = _generate_intervals(
-        args.num_prompts, args.request_rate, args.burstiness, args.seed
-    )
+    rate_pattern = getattr(args, "rate_pattern", None)
+    if rate_pattern and isinstance(rate_pattern, dict):
+        from xpyd_bench.bench.rate_patterns import generate_pattern_intervals
+
+        intervals = generate_pattern_intervals(args.num_prompts, rate_pattern, args.seed)
+    else:
+        intervals = _generate_intervals(
+            args.num_prompts, args.request_rate, args.burstiness, args.seed
+        )
 
     # Concurrency limiter
     semaphore = asyncio.Semaphore(args.max_concurrency) if args.max_concurrency else None

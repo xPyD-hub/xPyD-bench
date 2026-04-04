@@ -1,0 +1,7 @@
+# Example: Constant rate at 20 req/s
+rate_pattern:
+  type: constant
+  rate: 20.0
+
+num_prompts: 200
+output_len: 64
