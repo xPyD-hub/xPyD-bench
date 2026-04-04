@@ -101,10 +101,42 @@
 - Dummy server echoes received custom headers in response metadata for validation
 - Tests covering CLI parsing, header injection, YAML config, precedence, and dummy echo
 
-## M14: CSV & Markdown Export Formats
+## M14: CSV & Markdown Export Formats ✅
 - `--csv-report <path>` CLI flag to export summary metrics as CSV
 - `--markdown-report <path>` CLI flag to export summary as Markdown table
 - Per-request CSV export via `--export-requests-csv <path>`
 - YAML config support (`csv_report`, `markdown_report`, `export_requests_csv`)
 - Consistent column ordering across formats
 - Tests covering all export paths, file content validation, and CLI integration
+
+## M15: Multi-Endpoint Comparison Mode
+- `xpyd-bench multi --endpoints url1,url2 ...` to benchmark multiple endpoints in one run
+- Side-by-side summary table with per-endpoint metrics
+- Shared workload: same prompts, same ordering, same timing for fair comparison
+- JSON and Markdown comparison output
+- Reuse existing compare logic for pairwise regression detection
+- Tests covering multi-endpoint orchestration and output
+
+## M16: Token Bucket & Adaptive Concurrency
+- Token bucket rate limiter replacing simple sleep-based scheduling
+- `--rate-algorithm token-bucket` CLI flag (default preserves current behavior)
+- Adaptive concurrency: auto-adjust max in-flight requests based on server response latency
+- `--adaptive-concurrency` flag with configurable target latency
+- YAML config support for all new parameters
+- Tests covering rate accuracy, adaptive scaling up/down, and edge cases
+
+## M17: HTML Report Dashboard
+- `--html-report <path>` CLI flag to generate a self-contained HTML report
+- Interactive charts: latency distribution histogram, throughput timeline, TTFT CDF
+- Embedded CSS/JS (no external dependencies, works offline)
+- Summary stats table with color-coded thresholds
+- Per-request scatter plot (latency vs time)
+- YAML config support (`html_report`)
+- Tests covering HTML generation, file content validation, and CLI integration
+
+## M18: Profile & Replay Mode
+- `xpyd-bench profile --output trace.json` to record request timing patterns from a live endpoint
+- `xpyd-bench replay --trace trace.json --base-url <url>` to replay recorded patterns
+- Trace format captures: timestamps, prompt lengths, endpoint, inter-request delays
+- Deterministic replay for reproducible benchmarks across different servers
+- Tests covering profile recording, replay accuracy, and trace format validation
