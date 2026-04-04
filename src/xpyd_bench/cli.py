@@ -588,6 +588,15 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Path to user presets directory (default: ~/.xpyd-bench/presets/).",
     )
 
+    # Cost estimation (M39)
+    parser.add_argument(
+        "--cost-model",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Path to YAML cost model file mapping model names to $/1K tokens.",
+    )
+
 
 def _resolve_base_url(args: argparse.Namespace) -> str:
     """Resolve the base URL from --base-url or --host/--port."""
@@ -716,6 +725,25 @@ def _dry_run(args: argparse.Namespace, base_url: str) -> None:
 
     print()
     print("Dry run complete. Configuration is valid.")
+
+    # Cost estimation in dry-run (M39)
+    cost_model_path = getattr(args, "cost_model", None)
+    if cost_model_path:
+        from xpyd_bench.cost import (
+            estimate_cost_from_counts,
+            format_cost_summary,
+            load_cost_model,
+        )
+
+        cmodel = load_cost_model(cost_model_path)
+        est_input = args.num_prompts * args.input_len
+        est_output = args.num_prompts * args.output_len
+        cost_est = estimate_cost_from_counts(
+            est_input, est_output, cmodel, model_name=args.model or ""
+        )
+        print()
+        print(format_cost_summary(cost_est))
+        print("  (estimated from num_prompts × input_len / output_len)")
 
     # Environment info
     from xpyd_bench.bench.env import collect_env_info
@@ -1012,6 +1040,22 @@ def bench_main(argv: list[str] | None = None) -> None:
     # Save results if requested
     if args.save_result:
         _save_result(args, result)
+
+    # Cost estimation (M39)
+    cost_model_path = getattr(args, "cost_model", None)
+    if cost_model_path:
+        from xpyd_bench.cost import (
+            cost_to_dict,
+            estimate_cost,
+            format_cost_summary,
+            load_cost_model,
+        )
+
+        cmodel = load_cost_model(cost_model_path)
+        cost_est = estimate_cost(bench_result, cmodel)
+        print()
+        print(format_cost_summary(cost_est))
+        result["cost"] = cost_to_dict(cost_est)
 
     # SLA validation (M20)
     sla_path = getattr(args, "sla", None)
