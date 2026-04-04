@@ -225,7 +225,7 @@
 - YAML config support for all connection parameters
 - Tests covering HTTP/2 mode and pool configuration
 
-## M29: Live Progress Dashboard (Terminal UI)
+## M29: Live Progress Dashboard (Terminal UI) ✅
 - Real-time terminal dashboard using `rich.live` during benchmark execution
 - Display: progress bar, current RPS, latency sparkline, error count, ETA
 - `--no-live` flag to disable (for CI/non-interactive environments)
