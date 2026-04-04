@@ -88,6 +88,8 @@ _KNOWN_KEYS: set[str] = {
     "use_beam_search",
     "user",
     "metrics_ws_port",
+    "tags",
+    "template_vars",
     "warmup",
 }
 

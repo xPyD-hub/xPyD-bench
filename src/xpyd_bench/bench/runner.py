@@ -530,6 +530,14 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         else:
             prompts = _generate_random_prompts(args.num_prompts, args.input_len, args.seed)
 
+    # Apply template variable substitution (M37)
+    template_vars_path = getattr(args, "template_vars", None)
+    if template_vars_path:
+        from xpyd_bench.templating import apply_templates, load_template_vars
+
+        tvars = load_template_vars(template_vars_path)
+        prompts = apply_templates(prompts, tvars)
+
     # Generate inter-arrival intervals
     rate_algorithm = getattr(args, "rate_algorithm", "default")
     rate_pattern = getattr(args, "rate_pattern", None)
