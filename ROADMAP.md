@@ -177,7 +177,7 @@
 - YAML config support (`debug_log`)
 - Tests covering log file creation and content
 
-## M23: Configuration Dump & Validation
+## M23: Configuration Dump & Validation ✅
 - `xpyd-bench config dump` subcommand to print resolved configuration (CLI + YAML merged)
 - `xpyd-bench config validate --config <path>` to validate YAML config without running
 - Print warnings for deprecated or conflicting options
