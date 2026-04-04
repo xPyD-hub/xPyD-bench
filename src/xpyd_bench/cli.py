@@ -161,6 +161,12 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         default=None,
         help="Unique identifier representing the end-user.",
     )
+    sampling.add_argument(
+        "--stream-options-include-usage",
+        action="store_true",
+        default=False,
+        help="Request usage stats in the final streaming chunk (stream_options).",
+    )
 
     # Output
     parser.add_argument(

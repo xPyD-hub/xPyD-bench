@@ -144,6 +144,7 @@ async def _send_streaming(
     first_token_time: float | None = None
     last_token_time: float = start
     token_count = 0
+    stream_usage: dict[str, Any] | None = None
 
     try:
         async with client.stream("POST", url, json=payload, timeout=300.0) as resp:
@@ -160,6 +161,10 @@ async def _send_streaming(
                     chunk = json.loads(data_str)
                 except json.JSONDecodeError:
                     continue
+
+                # Capture usage from final streaming chunk (stream_options.include_usage)
+                if "usage" in chunk and chunk["usage"] is not None:
+                    stream_usage = chunk["usage"]
 
                 # Check if this chunk has content
                 choices = chunk.get("choices", [])
@@ -188,6 +193,10 @@ async def _send_streaming(
     end = time.perf_counter()
     result.latency_ms = (end - start) * 1000.0
     result.completion_tokens = token_count
+    if stream_usage:
+        result.prompt_tokens = stream_usage.get("prompt_tokens", 0)
+        if stream_usage.get("completion_tokens"):
+            result.completion_tokens = stream_usage["completion_tokens"]
     if token_count > 1 and first_token_time is not None:
         generation_time_ms = (last_token_time - first_token_time) * 1000.0
         result.tpot_ms = generation_time_ms / (token_count - 1)
@@ -254,6 +263,8 @@ def _build_payload(
             payload["logit_bias"] = args.logit_bias
     if getattr(args, "user", None) is not None:
         payload["user"] = args.user
+    if getattr(args, "stream_options_include_usage", False):
+        payload["stream_options"] = {"include_usage": True}
 
     return payload
 
