@@ -670,10 +670,13 @@ def _print_summary(r: BenchmarkResult) -> None:
         p90 = getattr(r, f"p90_{prefix}_ms")
         p95 = getattr(r, f"p95_{prefix}_ms")
         p99 = getattr(r, f"p99_{prefix}_ms")
-        print(
-            f"  {label:5s}  mean={mean:8.2f}  P50={p50:8.2f}  "
-            f"P90={p90:8.2f}  P95={p95:8.2f}  P99={p99:8.2f} ms"
-        )
+        if mean is None:
+            print(f"  {label:5s}  N/A (not measured)")
+        else:
+            print(
+                f"  {label:5s}  mean={mean:8.2f}  P50={p50:8.2f}  "
+                f"P90={p90:8.2f}  P95={p95:8.2f}  P99={p99:8.2f} ms"
+            )
     print("=" * 60)
 
 
@@ -779,7 +782,8 @@ def _to_dict(r: BenchmarkResult) -> dict:
     for prefix in ("ttft", "tpot", "itl", "e2el"):
         for stat in ("mean", "median", "p50", "p90", "p95", "p99"):
             key = f"{stat}_{prefix}_ms"
-            d[key] = getattr(r, key)
+            val = getattr(r, key)
+            d[key] = val  # None serializes as JSON null
     if r.environment:
         d["environment"] = r.environment
     if r.partial:
