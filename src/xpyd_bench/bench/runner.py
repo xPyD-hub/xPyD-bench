@@ -147,8 +147,10 @@ async def _send_request(
                 usage = body.get("usage", {})
                 result.prompt_tokens = usage.get("prompt_tokens", 0)
                 result.completion_tokens = usage.get("completion_tokens", 0)
-                if result.completion_tokens > 0:
-                    result.tpot_ms = result.latency_ms / result.completion_tokens
+                # Non-streaming: TPOT cannot be accurately measured because
+                # latency includes prefill time. Leave as None for consistency
+                # with streaming TPOT which correctly excludes TTFT/prefill.
+                # result.tpot_ms remains None
 
         except Exception as exc:  # noqa: BLE001
             end = time.perf_counter()
