@@ -66,10 +66,12 @@ class ComparisonResult:
     metrics: list[MetricDelta]
     has_regression: bool
     threshold_pct: float
+    baseline_partial: bool = False
+    candidate_partial: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-friendly dict."""
-        return {
+        d: dict[str, Any] = {
             "threshold_pct": self.threshold_pct,
             "has_regression": self.has_regression,
             "metrics": [
@@ -85,6 +87,11 @@ class ComparisonResult:
                 for m in self.metrics
             ],
         }
+        if self.baseline_partial:
+            d["baseline_partial"] = True
+        if self.candidate_partial:
+            d["candidate_partial"] = True
+        return d
 
 
 def _extract_metrics(data: dict[str, Any]) -> dict[str, float]:
@@ -177,6 +184,8 @@ def compare(
         metrics=deltas,
         has_regression=has_regression,
         threshold_pct=threshold_pct,
+        baseline_partial=bool(baseline.get("partial")),
+        candidate_partial=bool(candidate.get("partial")),
     )
 
 
@@ -186,6 +195,19 @@ def format_comparison_table(result: ComparisonResult) -> str:
     lines.append("=" * 90)
     lines.append("  xPyD-bench — Benchmark Comparison")
     lines.append(f"  Regression threshold: {result.threshold_pct}%")
+
+    # Warn about partial results
+    warnings: list[str] = []
+    if result.baseline_partial:
+        warnings.append("baseline")
+    if result.candidate_partial:
+        warnings.append("candidate")
+    if warnings:
+        lines.append(
+            f"  ⚠️  WARNING: {' and '.join(warnings)} result(s) are PARTIAL "
+            "(benchmark was interrupted)"
+        )
+
     lines.append("=" * 90)
     lines.append("")
 

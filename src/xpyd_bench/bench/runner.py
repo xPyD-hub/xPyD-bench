@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import random
+import signal
 import time
 from argparse import Namespace
 from typing import Any
@@ -504,6 +505,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
 
     tasks: list[asyncio.Task] = []
     overall_start = time.perf_counter()
+    shutdown_requested = False
 
     async def _tracked_task(client: httpx.AsyncClient, prompt: str) -> RequestResult:
         r = await _task(client, prompt)
@@ -511,27 +513,79 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             reporter.advance(success=r.success)
         return r
 
+    grace_period = getattr(args, "shutdown_grace_period", 5.0) or 5.0
+
     async with httpx.AsyncClient(headers=headers) as client:
+        # Install signal handler for graceful shutdown
+        loop = asyncio.get_running_loop()
+
+        def _signal_handler() -> None:
+            nonlocal shutdown_requested
+            if not shutdown_requested:
+                shutdown_requested = True
+                print("\n⚠️  SIGINT received — graceful shutdown initiated. "
+                      "Waiting for in-flight requests...")
+
+        try:
+            loop.add_signal_handler(signal.SIGINT, _signal_handler)
+        except NotImplementedError:
+            pass  # Windows doesn't support add_signal_handler
+
         for i, prompt in enumerate(prompts):
+            if shutdown_requested:
+                break
             if i > 0:
                 await asyncio.sleep(intervals[i])
+                if shutdown_requested:
+                    break
             task = asyncio.create_task(_tracked_task(client, prompt))
             tasks.append(task)
 
             if not use_rich and not args.disable_tqdm and (i + 1) % 100 == 0:
                 print(f"  Launched {i + 1}/{args.num_prompts} requests...")
 
-        # Wait for all to complete
-        results_list = await asyncio.gather(*tasks)
+        # Wait for all launched tasks to complete (with grace period if shutting down)
+        if shutdown_requested and tasks:
+            done, pending = await asyncio.wait(
+                tasks, timeout=grace_period, return_when=asyncio.ALL_COMPLETED
+            )
+            for t in pending:
+                t.cancel()
+            # Suppress CancelledError from cancelled tasks
+            await asyncio.gather(*pending, return_exceptions=True)
+        elif tasks:
+            await asyncio.gather(*tasks)
+
+        try:
+            loop.remove_signal_handler(signal.SIGINT)
+        except NotImplementedError:
+            pass
 
     overall_end = time.perf_counter()
     if reporter:
         reporter.stop()
 
+    # Collect results from completed (non-cancelled) tasks
+    results_list = []
+    for t in tasks:
+        if t.done() and not t.cancelled():
+            try:
+                results_list.append(t.result())
+            except Exception:  # noqa: BLE001
+                pass
+
     result.total_duration_s = overall_end - overall_start
-    result.requests = list(results_list)
+    result.requests = results_list
+    result.partial = shutdown_requested
 
     _compute_metrics(result)
+
+    if shutdown_requested:
+        print(
+            f"\n⚠️  Partial results: {result.completed} completed, "
+            f"{len(prompts) - len(tasks)} not launched, "
+            f"{len(tasks) - len(results_list)} cancelled"
+        )
 
     if reporter:
         reporter.print_summary_table(result)
@@ -591,4 +645,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         for stat in ("mean", "median", "p50", "p90", "p95", "p99"):
             key = f"{stat}_{prefix}_ms"
             d[key] = getattr(r, key)
+    if r.partial:
+        d["partial"] = True
     return d

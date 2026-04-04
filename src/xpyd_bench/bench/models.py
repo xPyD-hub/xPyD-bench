@@ -73,3 +73,6 @@ class BenchmarkResult:
     p90_e2el_ms: float = 0.0
     p95_e2el_ms: float = 0.0
     p99_e2el_ms: float = 0.0
+
+    # Partial result flag (set when benchmark was interrupted)
+    partial: bool = False
