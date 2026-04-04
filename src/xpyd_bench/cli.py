@@ -572,6 +572,22 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Path to JSON/YAML file with template variables for prompt substitution.",
     )
 
+    # Presets (M38)
+    parser.add_argument(
+        "--preset",
+        type=str,
+        default=None,
+        help="Use a benchmark preset (e.g. throughput-max, latency-optimal, soak-test, "
+        "cold-start). CLI flags override preset values. Use 'xpyd-bench presets list' "
+        "to see available presets.",
+    )
+    parser.add_argument(
+        "--presets-dir",
+        type=str,
+        default=None,
+        help="Path to user presets directory (default: ~/.xpyd-bench/presets/).",
+    )
+
 
 def _resolve_base_url(args: argparse.Namespace) -> str:
     """Resolve the base URL from --base-url or --host/--port."""
@@ -847,10 +863,38 @@ def bench_main(argv: list[str] | None = None) -> None:
             if current is None or current == parser.get_default(key):
                 setattr(args, key, value)
 
+    # Apply preset defaults (CLI flags take precedence) (M38)
+    preset_name = getattr(args, "preset", None)
+    if preset_name:
+        from pathlib import Path as _Path
+
+        from xpyd_bench.presets import get_preset
+
+        pdir = _Path(args.presets_dir) if getattr(args, "presets_dir", None) else None
+        preset = get_preset(preset_name, pdir)
+        for key, value in preset.to_overrides().items():
+            current = getattr(args, key, None)
+            if current is None or current == parser.get_default(key):
+                setattr(args, key, value)
+
     # Merge YAML config if provided
     if args.config:
         explicit = _get_explicit_keys(parser, args)
         args = _load_yaml_config(args.config, args, explicit_keys=explicit)
+
+    # Apply preset from YAML config if not already set via CLI (M38)
+    yaml_preset = getattr(args, "preset", None)
+    if yaml_preset and not preset_name:
+        from pathlib import Path as _Path
+
+        from xpyd_bench.presets import get_preset
+
+        pdir = _Path(args.presets_dir) if getattr(args, "presets_dir", None) else None
+        preset = get_preset(yaml_preset, pdir)
+        for key, value in preset.to_overrides().items():
+            current = getattr(args, key, None)
+            if current is None or current == parser.get_default(key):
+                setattr(args, key, value)
 
     base_url = _resolve_base_url(args)
 

@@ -74,6 +74,7 @@ _SUBCOMMANDS = {
     "aggregate",
     "history",
     "distributed",
+    "presets",
 }
 
 
@@ -131,6 +132,8 @@ def main() -> None:
         from xpyd_bench.distributed.cli import distributed_main
 
         distributed_main(rest)
+    elif subcmd == "presets":
+        _presets_subcommand(rest)
 
 
 def _config_subcommand(argv: list[str]) -> None:
@@ -153,6 +156,31 @@ def _config_subcommand(argv: list[str]) -> None:
     else:
         print(
             f"Unknown config subcommand '{sub}'. Use 'dump' or 'validate'.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
+def _presets_subcommand(argv: list[str]) -> None:
+    """Handle 'xpyd-bench presets <list|show>' subcommand."""
+    if not argv:
+        print("Usage: xpyd-bench presets <list|show> [options]", file=sys.stderr)
+        sys.exit(1)
+
+    sub = argv[0]
+    rest = argv[1:]
+
+    if sub == "list":
+        from xpyd_bench.presets import presets_list_main
+
+        presets_list_main(rest)
+    elif sub == "show":
+        from xpyd_bench.presets import presets_show_main
+
+        presets_show_main(rest)
+    else:
+        print(
+            f"Unknown presets subcommand '{sub}'. Use 'list' or 'show'.",
             file=sys.stderr,
         )
         sys.exit(1)
