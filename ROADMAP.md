@@ -200,3 +200,42 @@
 - `xpyd-bench config validate --config <path>` to validate YAML config without running
 - Print warnings for deprecated or conflicting options
 - Tests covering dump output and validation errors
+
+## M26: Embeddings Endpoint Benchmarking
+- Support `/v1/embeddings` endpoint benchmarking
+- `--endpoint /v1/embeddings` with model and input text
+- Metrics: latency, throughput (requests/s, tokens/s), batch size impact
+- Dummy server `/v1/embeddings` implementation with configurable vector dimensions
+- Tests covering embeddings benchmarking and dummy server
+
+## M27: Tokenizer-Accurate Token Counting
+- Integrate `tiktoken` for accurate token counting (instead of word-split heuristic)
+- `--tokenizer <model>` CLI flag to select tokenizer (default: cl100k_base)
+- Accurate prompt_tokens and completion_tokens in all metrics
+- Synthetic dataset generation uses token-accurate lengths
+- YAML config support (`tokenizer`)
+- Fallback to word-split when tiktoken unavailable
+- Tests covering token counting accuracy and fallback
+
+## M28: Connection Pool & HTTP/2 Configuration
+- `--http2` flag to enable HTTP/2 multiplexing
+- `--max-connections N` to configure connection pool size (default: 100)
+- `--max-keepalive N` for keepalive connection limit
+- Connection reuse metrics in debug log
+- YAML config support for all connection parameters
+- Tests covering HTTP/2 mode and pool configuration
+
+## M29: Live Progress Dashboard (Terminal UI)
+- Real-time terminal dashboard using `rich.live` during benchmark execution
+- Display: progress bar, current RPS, latency sparkline, error count, ETA
+- `--no-live` flag to disable (for CI/non-interactive environments)
+- Auto-detect non-TTY and disable gracefully
+- Tests covering dashboard data feed and non-TTY fallback
+
+## M30: Benchmark Result Storage & History
+- `--result-dir <path>` to auto-save results with timestamped filenames
+- `xpyd-bench history --result-dir <path>` to list past runs with summary
+- `xpyd-bench history --result-dir <path> --last N` to show last N runs
+- Trend visualization: metric trends across recent runs (terminal sparklines)
+- YAML config support (`result_dir`)
+- Tests covering auto-save, history listing, and trend computation
