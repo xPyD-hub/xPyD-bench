@@ -17,7 +17,7 @@
 - Decoupled from bench code (separate module in `src/xpyd_bench/dummy/`)
 - Used for bench validation without real GPU hardware
 
-## M3: Full OpenAI API Parameter Coverage ⬜
+## M3: Full OpenAI API Parameter Coverage ✅
 - All 4 input formats (string, array of strings, array of tokens, array of mixed)
 - All sampling parameters: temperature, top_k, top_p, frequency_penalty, presence_penalty
 - Stop sequences, logprobs, max_tokens, n, seed
