@@ -213,13 +213,16 @@ async def _send_streaming(
                 if not choices:
                     continue
 
-                delta = choices[0]
-                # completions endpoint uses "text", chat uses "delta.content"
-                text = delta.get("text") or (delta.get("delta") or {}).get("content")
-                if not text:
+                # Iterate all choices to handle n>1 completions (M3)
+                has_content = False
+                for delta in choices:
+                    # completions endpoint uses "text", chat uses "delta.content"
+                    text = delta.get("text") or (delta.get("delta") or {}).get("content")
+                    if text:
+                        token_count += 1
+                        has_content = True
+                if not has_content:
                     continue
-
-                token_count += 1
                 if first_token_time is None:
                     first_token_time = now
                     result.ttft_ms = (now - start) * 1000.0
