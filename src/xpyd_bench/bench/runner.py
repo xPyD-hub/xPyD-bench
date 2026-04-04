@@ -403,7 +403,10 @@ def _compute_metrics(result: BenchmarkResult) -> None:
 async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, BenchmarkResult]:
     """Execute the benchmark and return (result_dict, BenchmarkResult)."""
     is_chat = "chat" in args.endpoint
-    is_streaming = is_chat  # streaming by default for chat endpoint
+    # Use explicit --stream/--no-stream if provided; default to endpoint type for
+    # backward compatibility (chat=streaming, completions=non-streaming).
+    stream_flag = getattr(args, "stream", None)
+    is_streaming = stream_flag if stream_flag is not None else is_chat
     url = f"{base_url}{args.endpoint}"
 
     # Build default headers (authentication + custom)

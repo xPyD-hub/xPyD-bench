@@ -42,6 +42,22 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Model name for requests. If omitted, fetched from server.",
     )
 
+    # Streaming control
+    stream_group = parser.add_mutually_exclusive_group()
+    stream_group.add_argument(
+        "--stream",
+        action="store_true",
+        default=None,
+        dest="stream",
+        help="Enable streaming responses (default: True for chat, False for completions).",
+    )
+    stream_group.add_argument(
+        "--no-stream",
+        action="store_false",
+        dest="stream",
+        help="Disable streaming responses.",
+    )
+
     # Workload
     parser.add_argument(
         "--num-prompts",
@@ -490,6 +506,8 @@ def _dry_run(args: argparse.Namespace, base_url: str) -> None:
     print("Execution Plan:")
     print(f"  Base URL:        {base_url}")
     print(f"  Endpoint:        {args.endpoint}")
+    stream_val = args.stream if args.stream is not None else ("chat" in args.endpoint)
+    print(f"  Streaming:       {stream_val}")
     print(f"  Backend:         {args.backend}")
     print(f"  Model:           {args.model or '(auto-detect)'}")
     print(f"  Num prompts:     {args.num_prompts}")

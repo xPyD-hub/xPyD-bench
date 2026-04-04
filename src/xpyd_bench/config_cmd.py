@@ -67,6 +67,7 @@ _KNOWN_KEYS: set[str] = {
     "service_tier",
     "sla",
     "stop",
+    "stream",
     "stream_options_include_usage",
     "suffix",
     "synthetic_input_len_dist",
