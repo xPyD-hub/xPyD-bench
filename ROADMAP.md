@@ -45,9 +45,18 @@
 - Rich terminal output (progress bars, live stats)
 - JSON and human-readable report formats
 
-## M7: Built-in Benchmark Scenarios 🔄
+## M7: Built-in Benchmark Scenarios ✅
 - Predefined scenario presets: short, long_context, mixed, stress
 - ScenarioConfig dataclass with CLI-compatible overrides
 - `--scenario` CLI flag to select presets
 - `--list-scenarios` flag to list available presets
 - Tests covering all presets and CLI integration
+
+## M8: Benchmark Comparison & Regression Detection 🔄
+- `xpyd-bench compare <baseline.json> <candidate.json>` CLI subcommand
+- Side-by-side metric comparison (TTFT, TPOT, throughput, latency percentiles)
+- Percentage delta and direction indicators (improved / regressed / unchanged)
+- Configurable regression threshold (default 5%)
+- Exit code 1 when regression detected (CI-friendly)
+- Human-readable table output and JSON diff export
+- Tests covering comparison logic and CLI integration
