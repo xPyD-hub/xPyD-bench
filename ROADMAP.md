@@ -162,7 +162,7 @@
 - YAML config support (`sla: <path>`)
 - Tests covering SLA pass, SLA fail, partial SLA, missing metrics
 
-## M21: Environment Info Capture
+## M21: Environment Info Capture ✅
 - `collect_env_info()` utility in `src/xpyd_bench/bench/env.py`
 - Captures: Python version, OS, platform, CPU architecture, hostname, xpyd-bench version, ISO 8601 timestamp
 - `BenchmarkResult` includes `environment` dict field (auto-populated)
