@@ -217,7 +217,7 @@
 - Fallback to word-split when tiktoken unavailable
 - Tests covering token counting accuracy and fallback
 
-## M28: Connection Pool & HTTP/2 Configuration
+## M28: Connection Pool & HTTP/2 Configuration ✅
 - `--http2` flag to enable HTTP/2 multiplexing
 - `--max-connections N` to configure connection pool size (default: 100)
 - `--max-keepalive N` for keepalive connection limit
