@@ -303,8 +303,26 @@ async def run_benchmark(args: Namespace, base_url: str) -> dict:
     is_streaming = is_chat  # streaming by default for chat endpoint
     url = f"{base_url}{args.endpoint}"
 
-    # Generate prompts
-    prompts = _generate_random_prompts(args.num_prompts, args.input_len, args.seed)
+    # Generate or load prompts
+    dataset_path = getattr(args, "dataset_path", None)
+    if dataset_path:
+        from xpyd_bench.datasets.loader import load_dataset, validate_and_report
+
+        entries = load_dataset(
+            path=dataset_path,
+            num_prompts=args.num_prompts,
+            input_len=args.input_len,
+            output_len=args.output_len,
+            input_len_dist=getattr(args, "synthetic_input_len_dist", "fixed"),
+            output_len_dist=getattr(args, "synthetic_output_len_dist", "fixed"),
+            seed=args.seed,
+        )
+        validate_and_report(entries, dataset_path)
+        prompts = [e.prompt for e in entries]
+        # Override num_prompts to match actual dataset size
+        args.num_prompts = len(prompts)
+    else:
+        prompts = _generate_random_prompts(args.num_prompts, args.input_len, args.seed)
 
     # Generate inter-arrival intervals
     rate_pattern = getattr(args, "rate_pattern", None)

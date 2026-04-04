@@ -1,0 +1,4 @@
+[
+  {"prompt": "Summarize the benefits of open-source software.", "output_len": 100},
+  {"prompt": "What are the main differences between Python and Rust?", "output_len": 150}
+]

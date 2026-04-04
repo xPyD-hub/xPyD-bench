@@ -83,16 +83,30 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         "--dataset-name",
         type=str,
         default="random",
-        choices=["random"],
-        help="Dataset name (default: random).",
+        choices=["random", "synthetic"],
+        help="Dataset name (default: random). 'synthetic' enables distribution control.",
     )
     parser.add_argument(
         "--dataset-path",
         type=str,
         default=None,
-        help="Path to dataset file (JSONL/JSON).",
+        help="Path to dataset file (.jsonl, .json, or .csv).",
     )
     parser.add_argument("--seed", type=int, default=0, help="Random seed (default: 0).")
+    parser.add_argument(
+        "--synthetic-input-len-dist",
+        type=str,
+        default="fixed",
+        choices=["fixed", "uniform", "normal", "zipf"],
+        help="Input length distribution for synthetic datasets (default: fixed).",
+    )
+    parser.add_argument(
+        "--synthetic-output-len-dist",
+        type=str,
+        default="fixed",
+        choices=["fixed", "uniform", "normal", "zipf"],
+        help="Output length distribution for synthetic datasets (default: fixed).",
+    )
 
     # Sampling parameters
     sampling = parser.add_argument_group("sampling parameters")
