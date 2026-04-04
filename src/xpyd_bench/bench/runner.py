@@ -97,39 +97,73 @@ def _generate_intervals(
 # ---------------------------------------------------------------------------
 
 
+# Status codes that are retryable
+_RETRYABLE_STATUS_CODES = {429, 503}
+
+
+def _is_retryable(exc: Exception) -> bool:
+    """Check if an exception is retryable (connection error or retryable HTTP status)."""
+    if isinstance(exc, (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout)):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code in _RETRYABLE_STATUS_CODES
+    return False
+
+
 async def _send_request(
     client: httpx.AsyncClient,
     url: str,
     payload: dict[str, Any],
     is_streaming: bool,
+    request_timeout: float = 300.0,
+    retries: int = 0,
+    retry_delay: float = 1.0,
 ) -> RequestResult:
-    """Send one request and collect metrics."""
-    result = RequestResult()
-    start = time.perf_counter()
+    """Send one request and collect metrics, with optional retry."""
+    last_result = RequestResult()
+    attempts = 0
 
-    try:
-        if is_streaming:
-            result = await _send_streaming(client, url, payload, start)
-        else:
-            resp = await client.post(url, json=payload, timeout=300.0)
-            resp.raise_for_status()
+    for attempt in range(retries + 1):
+        attempts = attempt
+        result = RequestResult()
+        start = time.perf_counter()
+
+        try:
+            if is_streaming:
+                result = await _send_streaming(
+                    client, url, payload, start, request_timeout=request_timeout
+                )
+            else:
+                resp = await client.post(url, json=payload, timeout=request_timeout)
+                resp.raise_for_status()
+                end = time.perf_counter()
+                result.latency_ms = (end - start) * 1000.0
+
+                body = resp.json()
+                usage = body.get("usage", {})
+                result.prompt_tokens = usage.get("prompt_tokens", 0)
+                result.completion_tokens = usage.get("completion_tokens", 0)
+                if result.completion_tokens > 0:
+                    result.tpot_ms = result.latency_ms / result.completion_tokens
+
+        except Exception as exc:  # noqa: BLE001
             end = time.perf_counter()
             result.latency_ms = (end - start) * 1000.0
+            result.success = False
+            result.error = str(exc)
 
-            body = resp.json()
-            usage = body.get("usage", {})
-            result.prompt_tokens = usage.get("prompt_tokens", 0)
-            result.completion_tokens = usage.get("completion_tokens", 0)
-            if result.completion_tokens > 0:
-                result.tpot_ms = result.latency_ms / result.completion_tokens
+            # Retry if applicable
+            if attempt < retries and _is_retryable(exc):
+                delay = retry_delay * (2**attempt)
+                await asyncio.sleep(delay)
+                continue
 
-    except Exception as exc:  # noqa: BLE001
-        end = time.perf_counter()
-        result.latency_ms = (end - start) * 1000.0
-        result.success = False
-        result.error = str(exc)
+        result.retries = attempt
+        return result
 
-    return result
+    # Should not reach here, but just in case
+    last_result.retries = attempts
+    return last_result
 
 
 async def _send_streaming(
@@ -137,6 +171,7 @@ async def _send_streaming(
     url: str,
     payload: dict[str, Any],
     start: float,
+    request_timeout: float = 300.0,
 ) -> RequestResult:
     """Send a streaming request, measure TTFT / ITL."""
     result = RequestResult()
@@ -147,7 +182,7 @@ async def _send_streaming(
     stream_usage: dict[str, Any] | None = None
 
     try:
-        async with client.stream("POST", url, json=payload, timeout=300.0) as resp:
+        async with client.stream("POST", url, json=payload, timeout=request_timeout) as resp:
             resp.raise_for_status()
             async for line in resp.aiter_lines():
                 if not line.startswith("data: "):
@@ -411,14 +446,25 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         output_len=args.output_len,
     )
 
+    # Timeout & retry settings
+    request_timeout = getattr(args, "timeout", 300.0) or 300.0
+    req_retries = getattr(args, "retries", 0) or 0
+    req_retry_delay = getattr(args, "retry_delay", 1.0) or 1.0
+
     async def _task(client: httpx.AsyncClient, prompt: str) -> RequestResult:
         if semaphore:
             async with semaphore:
                 return await _send_request(
-                    client, url, _build_payload(args, prompt, is_chat), is_streaming
+                    client, url, _build_payload(args, prompt, is_chat), is_streaming,
+                    request_timeout=request_timeout,
+                    retries=req_retries,
+                    retry_delay=req_retry_delay,
                 )
         return await _send_request(
-            client, url, _build_payload(args, prompt, is_chat), is_streaming
+            client, url, _build_payload(args, prompt, is_chat), is_streaming,
+            request_timeout=request_timeout,
+            retries=req_retries,
+            retry_delay=req_retry_delay,
         )
 
     # Rich progress bar

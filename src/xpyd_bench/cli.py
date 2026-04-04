@@ -273,6 +273,26 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         "(excluded from metrics). Default: 0.",
     )
 
+    # Timeout & retry
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=300.0,
+        help="Per-request HTTP timeout in seconds (default: 300).",
+    )
+    parser.add_argument(
+        "--retries",
+        type=int,
+        default=0,
+        help="Number of retries on transient errors (connection, 429, 503). Default: 0.",
+    )
+    parser.add_argument(
+        "--retry-delay",
+        type=float,
+        default=1.0,
+        help="Base delay between retries in seconds, with exponential backoff. Default: 1.0.",
+    )
+
     # Extended config
     parser.add_argument(
         "--config",

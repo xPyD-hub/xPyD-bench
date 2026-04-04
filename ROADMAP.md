@@ -68,3 +68,11 @@
 - Works with completions, chat, streaming and non-streaming
 - YAML config support (`warmup: N`)
 - Tests covering warmup logic and metrics exclusion
+
+## M10: Configurable Timeouts & Retry Logic
+- `--timeout SECONDS` CLI flag for per-request HTTP timeout (default 300s)
+- `--retries N` for automatic retry on transient errors (connection, 429, 503)
+- `--retry-delay SECONDS` with exponential backoff (delay * 2^attempt)
+- RequestResult tracks `retries` count
+- YAML config support (`timeout`, `retries`, `retry_delay`)
+- Tests covering timeout, retry success, retry exhaustion, backoff

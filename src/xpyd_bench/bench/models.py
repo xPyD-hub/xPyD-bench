@@ -15,6 +15,7 @@ class RequestResult:
     tpot_ms: float | None = None  # Time per output token
     itl_ms: list[float] = field(default_factory=list)  # Inter-token latencies
     latency_ms: float = 0.0  # End-to-end latency
+    retries: int = 0
     success: bool = True
     error: str | None = None
 
