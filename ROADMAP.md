@@ -254,7 +254,7 @@
 - Worker heartbeat and failure detection
 - Tests covering coordination protocol and result aggregation
 
-## M33: Real-time Metrics Streaming (WebSocket)
+## M33: Real-time Metrics Streaming (WebSocket) ✅
 - `--metrics-ws-port <port>` to expose live metrics via WebSocket
 - JSON metrics pushed every second during benchmark
 - External dashboards (Grafana, custom) can subscribe
