@@ -73,6 +73,7 @@ _SUBCOMMANDS = {
     "config",
     "aggregate",
     "history",
+    "distributed",
 }
 
 
@@ -126,6 +127,10 @@ def main() -> None:
         from xpyd_bench.history import history_main
 
         history_main(rest)
+    elif subcmd == "distributed":
+        from xpyd_bench.distributed.cli import distributed_main
+
+        distributed_main(rest)
 
 
 def _config_subcommand(argv: list[str]) -> None:
