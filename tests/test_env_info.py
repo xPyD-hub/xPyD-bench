@@ -10,6 +10,7 @@ from dataclasses import asdict
 
 from xpyd_bench.bench.env import collect_env_info
 from xpyd_bench.bench.models import BenchmarkResult
+from xpyd_bench.bench.runner import _to_dict
 
 
 class TestCollectEnvInfo:
@@ -94,3 +95,19 @@ class TestBenchmarkResultEnvironment:
         raw = json.dumps(data, default=str)
         loaded = json.loads(raw)
         assert loaded["environment"]["hostname"] == socket.gethostname()
+
+
+class TestToDictEnvironment:
+    """Tests that _to_dict() includes environment in output."""
+
+    def test_to_dict_includes_environment(self):
+        env = collect_env_info()
+        r = BenchmarkResult(environment=env)
+        d = _to_dict(r)
+        assert "environment" in d
+        assert d["environment"]["os"] == platform.system()
+
+    def test_to_dict_omits_empty_environment(self):
+        r = BenchmarkResult()
+        d = _to_dict(r)
+        assert "environment" not in d

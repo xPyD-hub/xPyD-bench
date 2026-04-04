@@ -780,6 +780,8 @@ def _to_dict(r: BenchmarkResult) -> dict:
         for stat in ("mean", "median", "p50", "p90", "p95", "p99"):
             key = f"{stat}_{prefix}_ms"
             d[key] = getattr(r, key)
+    if r.environment:
+        d["environment"] = r.environment
     if r.partial:
         d["partial"] = True
     return d
