@@ -190,7 +190,19 @@ def _check_stop(text: str, stop: list[str] | str | None) -> tuple[bool, str]:
 
 
 async def _handle_completions(request: Request) -> JSONResponse | StreamingResponse:
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse(
+            {
+                "error": {
+                    "message": "Invalid JSON body",
+                    "type": "invalid_request_error",
+                    "code": "invalid_json",
+                }
+            },
+            status_code=400,
+        )
 
     # Validate parameters
     err = _validate_params(body)
@@ -199,7 +211,6 @@ async def _handle_completions(request: Request) -> JSONResponse | StreamingRespo
             {"error": {"message": err, "type": "invalid_request_error"}},
             status_code=400,
         )
-
     prompt = body.get("prompt", "")
     max_tokens = body.get("max_tokens", _config.max_tokens_default)
     stream = body.get("stream", False)
@@ -415,7 +426,19 @@ async def _stream_completions(
 
 
 async def _handle_chat_completions(request: Request) -> JSONResponse | StreamingResponse:
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse(
+            {
+                "error": {
+                    "message": "Invalid JSON body",
+                    "type": "invalid_request_error",
+                    "code": "invalid_json",
+                }
+            },
+            status_code=400,
+        )
 
     # Validate parameters
     err = _validate_params(body)
@@ -424,7 +447,6 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
             {"error": {"message": err, "type": "invalid_request_error"}},
             status_code=400,
         )
-
     messages = body.get("messages", [])
     max_tokens = body.get("max_tokens", _config.max_tokens_default)
     stream = body.get("stream", False)

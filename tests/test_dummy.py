@@ -188,3 +188,45 @@ class TestDummyCLI:
         assert args.prefill_ms == 100.0
         assert args.decode_ms == 20.0
         assert args.model_name == "my-model"
+
+
+class TestInvalidJsonBody:
+    """Tests for invalid JSON body returning 400."""
+
+    def test_completions_invalid_json(self, client):
+        resp = client.post(
+            "/v1/completions",
+            content=b"not json",
+            headers={"Content-Type": "application/json"},
+        )
+        assert resp.status_code == 400
+        body = resp.json()
+        assert body["error"]["type"] == "invalid_request_error"
+        assert body["error"]["code"] == "invalid_json"
+
+    def test_chat_completions_invalid_json(self, client):
+        resp = client.post(
+            "/v1/chat/completions",
+            content=b"not json",
+            headers={"Content-Type": "application/json"},
+        )
+        assert resp.status_code == 400
+        body = resp.json()
+        assert body["error"]["type"] == "invalid_request_error"
+        assert body["error"]["code"] == "invalid_json"
+
+    def test_completions_empty_body(self, client):
+        resp = client.post(
+            "/v1/completions",
+            content=b"",
+            headers={"Content-Type": "application/json"},
+        )
+        assert resp.status_code == 400
+
+    def test_chat_completions_empty_body(self, client):
+        resp = client.post(
+            "/v1/chat/completions",
+            content=b"",
+            headers={"Content-Type": "application/json"},
+        )
+        assert resp.status_code == 400
