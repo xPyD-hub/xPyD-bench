@@ -13,6 +13,7 @@ from typing import Any
 import httpx
 import numpy as np
 
+from xpyd_bench.bench.debug_log import DebugLogger
 from xpyd_bench.bench.env import collect_env_info
 from xpyd_bench.bench.models import BenchmarkResult, RequestResult
 
@@ -541,6 +542,12 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         if not args.disable_tqdm:
             print("Warmup complete. Starting benchmark...")
 
+    # Debug logger (M22)
+    debug_log_path = getattr(args, "debug_log", None)
+    debug_logger: DebugLogger | None = None
+    if debug_log_path:
+        debug_logger = DebugLogger(debug_log_path)
+
     if reporter:
         reporter.start()
 
@@ -549,7 +556,10 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     shutdown_requested = False
 
     async def _tracked_task(client: httpx.AsyncClient, prompt: str) -> RequestResult:
+        payload = _build_payload(args, prompt, is_chat)
         r = await _task(client, prompt)
+        if debug_logger:
+            debug_logger.log(url, payload, r)
         if reporter:
             reporter.advance(success=r.success)
         return r
@@ -621,6 +631,9 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     result.total_duration_s = overall_end - overall_start
     result.requests = results_list
     result.partial = shutdown_requested
+
+    if debug_logger:
+        debug_logger.close()
 
     _compute_metrics(result)
 
