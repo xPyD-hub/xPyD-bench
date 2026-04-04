@@ -1429,3 +1429,67 @@ def _save_result(args: argparse.Namespace, result: dict) -> None:
     with open(filepath, "w") as f:
         json.dump(result, f, indent=2, default=str)
     print(f"\nResults saved to {filepath}")
+
+
+def batch_main(argv: list[str] | None = None) -> None:
+    """CLI entry point for batch inference benchmarking (M41)."""
+    parser = argparse.ArgumentParser(
+        description="Batch inference API benchmarking",
+    )
+    parser.add_argument("--base-url", default="http://localhost:8000",
+                        help="Server base URL")
+    parser.add_argument("--model", default="", help="Model name")
+    parser.add_argument("--num-prompts", type=int, default=10,
+                        help="Number of prompts in the batch")
+    parser.add_argument("--input-len", type=int, default=256,
+                        help="Input length in tokens")
+    parser.add_argument("--output-len", type=int, default=128,
+                        help="Max output tokens")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser.add_argument("--poll-interval", type=float, default=2.0,
+                        help="Batch status poll interval in seconds")
+    parser.add_argument("--batch-timeout", type=float, default=600.0,
+                        help="Maximum time to wait for batch completion")
+    parser.add_argument("--batch-endpoint", default="/v1/completions",
+                        help="Target endpoint for batch requests")
+    parser.add_argument("--api-key", default=None, help="API key")
+    parser.add_argument("--timeout", type=float, default=300.0,
+                        help="Per-request HTTP timeout")
+    parser.add_argument("--dataset-path", default=None,
+                        help="Path to dataset file")
+    parser.add_argument("--save-result", default=None,
+                        help="Save result JSON to this path")
+    parser.add_argument("--disable-tqdm", action="store_true",
+                        help="Disable progress output")
+    parser.add_argument("--config", default=None, help="YAML config file")
+
+    if argv is not None:
+        args = parser.parse_args(argv)
+    else:
+        args = parser.parse_args()
+
+    # Load YAML config overrides
+    if args.config:
+        from xpyd_bench.config_cmd import _load_yaml_config
+        yaml_cfg = _load_yaml_config(args.config)
+        for key, value in yaml_cfg.items():
+            if not hasattr(args, key) or getattr(args, key) is None:
+                setattr(args, key, value)
+
+    # Env var fallback for API key
+    if not args.api_key:
+        import os
+        args.api_key = os.environ.get("OPENAI_API_KEY")
+
+    from xpyd_bench.batch import run_batch_benchmark
+
+    result_dict, bench_result = asyncio.run(
+        run_batch_benchmark(args, args.base_url)
+    )
+
+    if args.save_result:
+        p = Path(args.save_result)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with open(p, "w") as f:
+            json.dump(result_dict, f, indent=2, default=str)
+        print(f"\nResult saved to {p}")
