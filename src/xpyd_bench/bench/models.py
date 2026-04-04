@@ -50,13 +50,25 @@ class BenchmarkResult:
     # Latency percentiles
     mean_ttft_ms: float = 0.0
     median_ttft_ms: float = 0.0
+    p50_ttft_ms: float = 0.0
+    p90_ttft_ms: float = 0.0
+    p95_ttft_ms: float = 0.0
     p99_ttft_ms: float = 0.0
     mean_tpot_ms: float = 0.0
     median_tpot_ms: float = 0.0
+    p50_tpot_ms: float = 0.0
+    p90_tpot_ms: float = 0.0
+    p95_tpot_ms: float = 0.0
     p99_tpot_ms: float = 0.0
     mean_itl_ms: float = 0.0
     median_itl_ms: float = 0.0
+    p50_itl_ms: float = 0.0
+    p90_itl_ms: float = 0.0
+    p95_itl_ms: float = 0.0
     p99_itl_ms: float = 0.0
     mean_e2el_ms: float = 0.0
     median_e2el_ms: float = 0.0
+    p50_e2el_ms: float = 0.0
+    p90_e2el_ms: float = 0.0
+    p95_e2el_ms: float = 0.0
     p99_e2el_ms: float = 0.0

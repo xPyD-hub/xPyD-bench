@@ -171,6 +171,41 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Path to YAML config file for extended options.",
     )
 
+    # Reporting (M6)
+    reporting = parser.add_argument_group("reporting")
+    reporting.add_argument(
+        "--export-requests",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Export per-request detailed metrics to a JSON file.",
+    )
+    reporting.add_argument(
+        "--json-report",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Export full JSON report (summary + time-series) to a file.",
+    )
+    reporting.add_argument(
+        "--text-report",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Export human-readable text report to a file.",
+    )
+    reporting.add_argument(
+        "--time-series-window",
+        type=float,
+        default=1.0,
+        help="Time-series bucketing window in seconds (default: 1.0).",
+    )
+    reporting.add_argument(
+        "--rich-progress",
+        action="store_true",
+        help="Use rich progress bar and summary table.",
+    )
+
 
 def _resolve_base_url(args: argparse.Namespace) -> str:
     """Resolve the base URL from --base-url or --host/--port."""
@@ -220,7 +255,31 @@ def bench_main(argv: list[str] | None = None) -> None:
     print(f"  Output len:     {args.output_len}")
     print()
 
-    result = asyncio.run(run_benchmark(args, base_url))
+    result, bench_result = asyncio.run(run_benchmark(args, base_url))
+
+    # Export reports (M6)
+    if args.export_requests:
+        from xpyd_bench.reporting.formats import export_per_request
+
+        p = export_per_request(bench_result, args.export_requests)
+        print(f"\nPer-request metrics saved to {p}")
+
+    if args.json_report:
+        from xpyd_bench.reporting.formats import export_json_report
+
+        p = export_json_report(
+            bench_result, result, args.json_report, args.time_series_window
+        )
+        print(f"\nJSON report saved to {p}")
+
+    if args.text_report:
+        from xpyd_bench.reporting.formats import format_text_report
+
+        text = format_text_report(bench_result)
+        rpath = Path(args.text_report)
+        rpath.parent.mkdir(parents=True, exist_ok=True)
+        rpath.write_text(text)
+        print(f"\nText report saved to {rpath}")
 
     # Save results if requested
     if args.save_result:
