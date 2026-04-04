@@ -141,7 +141,7 @@
 - Deterministic replay for reproducible benchmarks across different servers
 - Tests covering profile recording, replay accuracy, and trace format validation
 
-## M19: Dry Run Mode
+## M19: Dry Run Mode ✅
 - `--dry-run` CLI flag to validate configuration and dataset without sending HTTP requests
 - Print execution plan: resolved base URL, endpoint, model, dataset stats, rate config
 - Load and validate dataset (file or synthetic), report stats
