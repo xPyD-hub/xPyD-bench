@@ -66,11 +66,18 @@ def _extract_custom_headers(request: Request) -> dict[str, str]:
 
 
 def _echo_headers_dict(request: Request) -> dict[str, str]:
-    """Build response headers that echo custom request headers."""
+    """Build response headers that echo custom request headers.
+
+    Also explicitly echoes X-Request-ID for direct correlation (M42).
+    """
     custom = _extract_custom_headers(request)
-    if not custom:
-        return {}
-    return {"x-echo-headers": json.dumps(custom, separators=(",", ":"))}
+    result: dict[str, str] = {}
+    req_id = request.headers.get("x-request-id")
+    if req_id:
+        result["X-Request-ID"] = req_id
+    if custom:
+        result["x-echo-headers"] = json.dumps(custom, separators=(",", ":"))
+    return result
 
 
 def _normalize_prompt(prompt: str | list | None) -> str:

@@ -91,6 +91,8 @@ _KNOWN_KEYS: set[str] = {
     "tags",
     "template_vars",
     "warmup",
+    "compress",
+    "request_id_prefix",
 }
 
 # Deprecated keys (currently none, placeholder for future use)
