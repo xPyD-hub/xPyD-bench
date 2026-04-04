@@ -300,7 +300,7 @@
 - Built-in presets: throughput-max, latency-optimal, soak-test, cold-start
 - Tests covering preset loading, user overrides, and CLI integration
 
-## M39: Cost Estimation
+## M39: Cost Estimation ✅
 - `--cost-model <path>` YAML file mapping model names to $/1K tokens (input/output)
 - After benchmark, compute estimated cost based on actual token counts
 - Cost included in JSON result, CSV export, and terminal summary
