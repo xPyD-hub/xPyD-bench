@@ -562,6 +562,16 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Attach a metadata tag (repeatable). E.g. --tag env=prod --tag gpu=A100",
     )
 
+    # Template variables (M37)
+    parser.add_argument(
+        "--template-vars",
+        type=str,
+        default=None,
+        dest="template_vars",
+        metavar="PATH",
+        help="Path to JSON/YAML file with template variables for prompt substitution.",
+    )
+
 
 def _resolve_base_url(args: argparse.Namespace) -> str:
     """Resolve the base URL from --base-url or --host/--port."""
