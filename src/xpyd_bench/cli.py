@@ -325,6 +325,52 @@ def bench_main(argv: list[str] | None = None) -> None:
         _save_result(args, result)
 
 
+def compare_main(argv: list[str] | None = None) -> None:
+    """Entry point for ``xpyd-bench-compare`` command."""
+    from xpyd_bench.compare import (
+        compare,
+        format_comparison_table,
+        load_result,
+    )
+
+    parser = argparse.ArgumentParser(
+        prog="xpyd-bench-compare",
+        description="Compare two benchmark results and detect regressions",
+    )
+    parser.add_argument("baseline", help="Path to baseline result JSON file")
+    parser.add_argument("candidate", help="Path to candidate result JSON file")
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=5.0,
+        help="Regression threshold percentage (default: 5.0)",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Export JSON diff to a file",
+    )
+    args = parser.parse_args(argv)
+
+    baseline = load_result(args.baseline)
+    candidate = load_result(args.candidate)
+    result = compare(baseline, candidate, threshold_pct=args.threshold)
+
+    print(format_comparison_table(result))
+
+    if args.output:
+        out_path = Path(args.output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_path, "w") as f:
+            json.dump(result.to_dict(), f, indent=2)
+        print(f"\nJSON diff saved to {out_path}")
+
+    if result.has_regression:
+        raise SystemExit(1)
+
+
 def _save_result(args: argparse.Namespace, result: dict) -> None:
     """Save benchmark result to JSON."""
     from datetime import datetime
