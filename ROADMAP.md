@@ -240,7 +240,7 @@
 - YAML config support (`result_dir`)
 - Tests covering auto-save, history listing, and trend computation
 
-## M31: Plugin Architecture for Custom Backends
+## M31: Plugin Architecture for Custom Backends ✅
 - Plugin interface for registering custom backend protocols (beyond OpenAI)
 - `--backend custom --backend-plugin <module>` CLI integration
 - Example plugin for vLLM native protocol
