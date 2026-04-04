@@ -137,7 +137,7 @@ class TestDummyServerAuth:
         thread.start()
 
         base = f"http://127.0.0.1:{port}"
-        asyncio.get_event_loop().run_until_complete(_wait_healthy(base))
+        asyncio.run(_wait_healthy(base))
         yield base
         server.should_exit = True
         thread.join(timeout=3)
@@ -214,7 +214,7 @@ class TestRunnerAuthHeaders:
         thread = threading.Thread(target=run, daemon=True)
         thread.start()
         base = f"http://127.0.0.1:{port}"
-        asyncio.get_event_loop().run_until_complete(_wait_healthy(base))
+        asyncio.run(_wait_healthy(base))
         yield base
         server.should_exit = True
         thread.join(timeout=3)
@@ -243,7 +243,7 @@ class TestRunnerAuthHeaders:
         thread = threading.Thread(target=run, daemon=True)
         thread.start()
         base = f"http://127.0.0.1:{port}"
-        asyncio.get_event_loop().run_until_complete(_wait_healthy(base))
+        asyncio.run(_wait_healthy(base))
         yield base
         server.should_exit = True
         thread.join(timeout=3)
