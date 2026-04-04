@@ -316,7 +316,7 @@
 - Metrics: track compressed vs uncompressed payload sizes in debug log
 - Tests covering compression encoding, dummy server decompression, and CLI integration
 
-## M41: Batch Inference API Benchmarking ⬜
+## M41: Batch Inference API Benchmarking ✅
 - Support `/v1/batch` endpoint for offline batch inference benchmarking
 - `xpyd-bench run --endpoint /v1/batch` with batch-specific metrics (queue time, processing time)
 - Batch submission, polling, and result retrieval workflow
