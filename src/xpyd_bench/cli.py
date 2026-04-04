@@ -361,6 +361,15 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Initial concurrency for adaptive mode (default: 16).",
     )
 
+    # Dry run
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=None,
+        help="Validate configuration and dataset without sending requests. "
+        "Prints execution plan and exits.",
+    )
+
     # Extended config
     parser.add_argument(
         "--config",
@@ -451,6 +460,97 @@ def _resolve_base_url(args: argparse.Namespace) -> str:
     if args.base_url:
         return args.base_url.rstrip("/")
     return f"http://{args.host}:{args.port}"
+
+
+def _dry_run(args: argparse.Namespace, base_url: str) -> None:
+    """Validate configuration and dataset, print execution plan, then exit."""
+    from xpyd_bench import __version__
+    from xpyd_bench.datasets.loader import load_dataset, validate_and_report
+
+    print(f"xpyd-bench v{__version__} — DRY RUN")
+    print(f"{'='*60}")
+    print()
+
+    # Execution plan
+    print("Execution Plan:")
+    print(f"  Base URL:        {base_url}")
+    print(f"  Endpoint:        {args.endpoint}")
+    print(f"  Backend:         {args.backend}")
+    print(f"  Model:           {args.model or '(auto-detect)'}")
+    print(f"  Num prompts:     {args.num_prompts}")
+    print(f"  Request rate:    {args.request_rate}")
+    print(f"  Max concurrency: {args.max_concurrency or 'unlimited'}")
+    print(f"  Input len:       {args.input_len}")
+    print(f"  Output len:      {args.output_len}")
+    print(f"  Seed:            {args.seed}")
+    print(f"  Rate algorithm:  {args.rate_algorithm}")
+
+    # Auth
+    api_key_source = "none"
+    if args.api_key:
+        api_key_source = "CLI/config (set)"
+    print(f"  API key:         {api_key_source}")
+
+    # Custom headers
+    if args.custom_headers:
+        print(f"  Custom headers:  {len(args.custom_headers)} header(s)")
+        for k, v in args.custom_headers.items():
+            print(f"    {k}: {v}")
+    else:
+        print("  Custom headers:  none")
+
+    # Warmup
+    warmup = getattr(args, "warmup", None) or 0
+    print(f"  Warmup requests: {warmup}")
+
+    # Timeout / retry
+    print(f"  Timeout:         {args.timeout}s")
+    print(f"  Retries:         {args.retries}")
+    if args.retries > 0:
+        print(f"  Retry delay:     {args.retry_delay}s (exponential backoff)")
+
+    # Scenario
+    scenario = getattr(args, "scenario", None)
+    if scenario:
+        print(f"  Scenario:        {scenario}")
+
+    print()
+
+    # Dataset validation
+    print("Dataset Validation:")
+    try:
+        entries = load_dataset(
+            path=args.dataset_path,
+            name=args.dataset_name,
+            num_prompts=args.num_prompts,
+            input_len=args.input_len,
+            output_len=args.output_len,
+            input_len_dist=getattr(args, "synthetic_input_len_dist", "fixed"),
+            output_len_dist=getattr(args, "synthetic_output_len_dist", "fixed"),
+            seed=args.seed,
+        )
+        source = args.dataset_path or f"synthetic ({args.dataset_name})"
+        validate_and_report(entries, source)
+    except (ValueError, FileNotFoundError) as exc:
+        print(f"  ERROR: {exc}")
+        raise SystemExit(1) from exc
+
+    print()
+
+    # Estimated duration
+    rate = args.request_rate
+    if rate != float("inf") and rate > 0:
+        est_seconds = args.num_prompts / rate
+        if est_seconds >= 60:
+            print(f"Estimated duration: {est_seconds / 60:.1f} min ({est_seconds:.0f}s)")
+        else:
+            print(f"Estimated duration: {est_seconds:.1f}s")
+    else:
+        print("Estimated duration: all requests sent at once (rate=inf)")
+
+    print()
+    print("Dry run complete. Configuration is valid.")
+    print(f"{'='*60}")
 
 
 def _parse_header(raw: str) -> tuple[str, str]:
@@ -545,6 +645,11 @@ def bench_main(argv: list[str] | None = None) -> None:
 
     from xpyd_bench import __version__
     from xpyd_bench.bench.runner import run_benchmark
+
+    # Dry run: validate config and dataset, print plan, exit
+    if getattr(args, "dry_run", False):
+        _dry_run(args, base_url)
+        return
 
     print(f"xpyd-bench v{__version__}")
     print(f"  Base URL:       {base_url}")
