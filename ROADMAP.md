@@ -60,3 +60,11 @@
 - Exit code 1 when regression detected (CI-friendly)
 - Human-readable table output and JSON diff export
 - Tests covering comparison logic and CLI integration
+
+## M9: Warmup Requests
+- `--warmup N` CLI argument to send N warmup requests before benchmark
+- Warmup requests excluded from metrics and results
+- Sequential warmup with separate progress indicator
+- Works with completions, chat, streaming and non-streaming
+- YAML config support (`warmup: N`)
+- Tests covering warmup logic and metrics exclusion

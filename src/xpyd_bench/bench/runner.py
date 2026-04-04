@@ -428,6 +428,26 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         from xpyd_bench.reporting.rich_output import RichProgressReporter
 
         reporter = RichProgressReporter(total=args.num_prompts)
+
+    # --- Warmup phase ---
+    warmup_count = getattr(args, "warmup", 0) or 0
+    if warmup_count > 0:
+        if not args.disable_tqdm:
+            print(f"Warmup: sending {warmup_count} request(s)...")
+        warmup_prompts = prompts[:warmup_count] if len(prompts) >= warmup_count else (
+            prompts * ((warmup_count // len(prompts)) + 1)
+        )[:warmup_count]
+        async with httpx.AsyncClient() as warmup_client:
+            for wi, wp in enumerate(warmup_prompts):
+                payload = _build_payload(args, wp, is_chat)
+                wr = await _send_request(warmup_client, url, payload, is_streaming)
+                if not args.disable_tqdm:
+                    status = "ok" if wr.success else f"FAIL: {wr.error}"
+                    print(f"  Warmup {wi + 1}/{warmup_count}: {status}")
+        if not args.disable_tqdm:
+            print("Warmup complete. Starting benchmark...")
+
+    if reporter:
         reporter.start()
 
     tasks: list[asyncio.Task] = []
