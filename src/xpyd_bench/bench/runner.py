@@ -189,11 +189,18 @@ async def _send_request(
     request_id: str | None = None,
     sse_metrics: bool = False,
     track_ratelimits: bool = False,
+    track_payload_size: bool = False,
 ) -> RequestResult:
     """Send one request and collect metrics, with optional retry."""
     last_result = RequestResult()
     attempts = 0
     _extra_hdrs = {"X-Request-ID": request_id} if request_id else None
+
+    # Pre-compute request payload size if tracking enabled (M67)
+    _req_bytes: int | None = None
+    if track_payload_size:
+        from xpyd_bench.bench.payload_size import compute_payload_bytes
+        _req_bytes = compute_payload_bytes(payload)
 
     for attempt in range(retries + 1):
         attempts = attempt
@@ -209,8 +216,12 @@ async def _send_request(
                     compress=compress, extra_headers=_extra_hdrs,
                     sse_metrics=sse_metrics,
                     track_ratelimits=track_ratelimits,
+                    track_payload_size=track_payload_size,
                 )
                 result.request_id = request_id
+                # Payload size tracking for streaming (M67)
+                if track_payload_size:
+                    result.request_bytes = _req_bytes
             else:
                 req_kw = _compressed_request_kwargs(payload, compress, extra_headers=_extra_hdrs)
                 resp = await client.post(url, **req_kw, timeout=request_timeout)
@@ -224,6 +235,11 @@ async def _send_request(
                     rl = parse_ratelimit_headers(resp.headers)
                     if rl:
                         result.ratelimit_headers = rl
+
+                # Payload size tracking (M67)
+                if track_payload_size:
+                    result.request_bytes = _req_bytes
+                    result.response_bytes = len(resp.content)
 
                 body = resp.json()
                 usage = body.get("usage", {})
@@ -279,6 +295,7 @@ async def _send_streaming(
     extra_headers: dict[str, str] | None = None,
     sse_metrics: bool = False,
     track_ratelimits: bool = False,
+    track_payload_size: bool = False,
 ) -> RequestResult:
     """Send a streaming request, measure TTFT / ITL."""
     result = RequestResult()
@@ -290,6 +307,7 @@ async def _send_streaming(
     collected_text_parts: list[str] = []  # M47: collect response text for validation
     stream_usage: dict[str, Any] | None = None
     chunk_timing_list: list[Any] = []  # M53: per-chunk timing data
+    _stream_response_bytes = 0  # M67: track streamed response size
 
     try:
         req_kw = _compressed_request_kwargs(payload, compress, extra_headers=extra_headers)
@@ -302,6 +320,8 @@ async def _send_streaming(
                 if rl:
                     result.ratelimit_headers = rl
             async for line in resp.aiter_lines():
+                if track_payload_size:
+                    _stream_response_bytes += len(line.encode("utf-8")) + 1  # +1 for newline
                 if not line.startswith("data: "):
                     continue
                 data_str = line[len("data: "):]
@@ -377,6 +397,10 @@ async def _send_streaming(
     # M53: Store chunk timings if SSE metrics enabled
     if sse_metrics and chunk_timing_list:
         result.chunk_timings = chunk_timing_list
+
+    # M67: Store streamed response bytes
+    if track_payload_size:
+        result.response_bytes = _stream_response_bytes
 
     return result
 
@@ -719,6 +743,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     sse_metrics_enabled = bool(getattr(args, "sse_metrics", False))
     sse_stall_threshold = float(getattr(args, "sse_stall_threshold_ms", 1000.0) or 1000.0)
     track_ratelimits_enabled = bool(getattr(args, "track_ratelimits", False))
+    track_payload_size_enabled = bool(getattr(args, "track_payload_size", False))
 
     async def _do_send(
         client: httpx.AsyncClient, payload: dict[str, Any]
@@ -743,6 +768,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             request_id=rid,
             sse_metrics=sse_metrics_enabled,
             track_ratelimits=track_ratelimits_enabled,
+            track_payload_size=track_payload_size_enabled,
         )
 
     # Noise injection (M60)
@@ -1117,6 +1143,15 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         error_msgs = [r.error for r in result.requests]
         rl_summary = aggregate_ratelimit(rl_headers, error_msgs)
         result.ratelimit_summary = rl_summary.to_dict()
+
+    # Payload size aggregation (M67)
+    if track_payload_size_enabled and result.requests:
+        from xpyd_bench.bench.payload_size import aggregate_payload_sizes
+
+        req_bytes = [r.request_bytes for r in result.requests]
+        resp_bytes = [r.response_bytes for r in result.requests]
+        ps_summary = aggregate_payload_sizes(req_bytes, resp_bytes)
+        result.payload_summary = ps_summary.to_dict()
 
     # Response validation (M47)
     validators_specs = getattr(args, "validate_response", None) or []

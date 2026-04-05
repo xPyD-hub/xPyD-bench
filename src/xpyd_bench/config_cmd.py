@@ -114,6 +114,7 @@ _KNOWN_KEYS: set[str] = {
     "otlp_endpoint",
     "on_complete",
     "track_ratelimits",
+    "track_payload_size",
 }
 
 # Deprecated keys (currently none, placeholder for future use)
