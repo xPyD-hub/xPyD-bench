@@ -686,3 +686,15 @@
 - `BenchmarkResult` includes `rolling_metrics` dict with windows and degradation info
 - YAML config support (`rolling_metrics`, `rolling_window`, `rolling_step`)
 - Tests covering window computation, degradation detection, custom percentiles, and config keys
+
+## M82: Benchmark Baseline Registry ✅
+- `xpyd-bench baseline save <name> <result.json>` CLI subcommand to register a named baseline
+- `xpyd-bench baseline list` to show all saved baselines with name, date, model, summary metrics
+- `xpyd-bench baseline show <name>` to print baseline details
+- `xpyd-bench baseline delete <name>` to remove a baseline
+- `--compare-baseline <name>` flag on `xpyd-bench run` to auto-compare after benchmark
+- Baseline registry stored in `~/.xpyd-bench/baselines/` (JSON files + index)
+- `--baseline-dir <path>` to override registry location
+- YAML config support (`compare_baseline`, `baseline_dir`)
+- Reuse existing compare logic for regression detection
+- Tests covering save, list, show, delete, auto-compare, custom dir, and edge cases

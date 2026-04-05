@@ -551,6 +551,22 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Rolling window step size in seconds (default: 5).",
     )
 
+    # Baseline comparison (M82)
+    parser.add_argument(
+        "--compare-baseline",
+        type=str,
+        default=None,
+        dest="compare_baseline",
+        help="Compare results against a named baseline after benchmark.",
+    )
+    parser.add_argument(
+        "--baseline-dir",
+        type=str,
+        default=None,
+        dest="baseline_dir",
+        help="Custom baseline registry directory.",
+    )
+
     # Response validation (M47)
     parser.add_argument(
         "--validate-response",
@@ -1631,6 +1647,25 @@ def bench_main(argv: list[str] | None = None) -> None:
     # Save results if requested
     if args.save_result:
         _save_result(args, result)
+
+    # Baseline comparison (M82)
+    compare_bl = getattr(args, "compare_baseline", None)
+    if compare_bl:
+        from xpyd_bench.baseline import compare_against_baseline
+
+        bl_dir = getattr(args, "baseline_dir", None)
+        try:
+            bl_result = compare_against_baseline(compare_bl, result, baseline_dir=bl_dir)
+            print(f"\n--- Baseline Comparison: '{compare_bl}' ---")
+            for c in bl_result["comparisons"]:
+                indicator = "REGRESSED" if c["regressed"] else "ok"
+                print(f"  {c['metric']}: baseline={c['baseline']}, current={c['current']}, "
+                      f"delta={c['delta_pct']:+.1f}% [{indicator}]")
+            if bl_result["regression_detected"]:
+                print("  ⚠ Regression detected!")
+        except (KeyError, FileNotFoundError) as exc:
+            import sys as _sys
+            print(f"Baseline comparison failed: {exc}", file=_sys.stderr)
 
     # Cost estimation (M39)
     cost_model_path = getattr(args, "cost_model", None)

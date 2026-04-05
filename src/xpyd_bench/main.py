@@ -86,6 +86,7 @@ _SUBCOMMANDS = {
     "resume",
     "model-compare",
     "stream-compare",
+    "baseline",
 }
 
 
@@ -189,6 +190,8 @@ def main() -> None:
         from xpyd_bench.cli import stream_compare_main
 
         stream_compare_main(rest)
+    elif subcmd == "baseline":
+        _baseline_subcommand(rest)
 
 
 def _config_subcommand(argv: list[str]) -> None:
@@ -236,6 +239,81 @@ def _presets_subcommand(argv: list[str]) -> None:
     else:
         print(
             f"Unknown presets subcommand '{sub}'. Use 'list' or 'show'.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
+def _baseline_subcommand(argv: list[str]) -> None:
+    """Handle 'xpyd-bench baseline <save|list|show|delete>' subcommand."""
+    import argparse
+    import json
+
+    if not argv:
+        print(
+            "Usage: xpyd-bench baseline <save|list|show|delete> [options]",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    sub = argv[0]
+    rest = argv[1:]
+
+    if sub == "save":
+        parser = argparse.ArgumentParser(prog="xpyd-bench baseline save")
+        parser.add_argument("name", help="Name for the baseline")
+        parser.add_argument("result", help="Path to result JSON file")
+        parser.add_argument("--baseline-dir", default=None, help="Custom baseline directory")
+        args = parser.parse_args(rest)
+
+        from xpyd_bench.baseline import save_baseline
+
+        entry = save_baseline(args.name, args.result, baseline_dir=args.baseline_dir)
+        print(f"Baseline '{args.name}' saved.")
+        print(json.dumps(entry, indent=2))
+
+    elif sub == "list":
+        parser = argparse.ArgumentParser(prog="xpyd-bench baseline list")
+        parser.add_argument("--baseline-dir", default=None, help="Custom baseline directory")
+        args = parser.parse_args(rest)
+
+        from xpyd_bench.baseline import list_baselines
+
+        baselines = list_baselines(baseline_dir=args.baseline_dir)
+        if not baselines:
+            print("No baselines saved.")
+        else:
+            for b in baselines:
+                line = f"  {b['name']}  saved={b.get('saved_at', '?')}"
+                if "model" in b and b["model"]:
+                    line += f"  model={b['model']}"
+                print(line)
+
+    elif sub == "show":
+        parser = argparse.ArgumentParser(prog="xpyd-bench baseline show")
+        parser.add_argument("name", help="Baseline name")
+        parser.add_argument("--baseline-dir", default=None, help="Custom baseline directory")
+        args = parser.parse_args(rest)
+
+        from xpyd_bench.baseline import show_baseline
+
+        data = show_baseline(args.name, baseline_dir=args.baseline_dir)
+        print(json.dumps(data, indent=2))
+
+    elif sub == "delete":
+        parser = argparse.ArgumentParser(prog="xpyd-bench baseline delete")
+        parser.add_argument("name", help="Baseline name to delete")
+        parser.add_argument("--baseline-dir", default=None, help="Custom baseline directory")
+        args = parser.parse_args(rest)
+
+        from xpyd_bench.baseline import delete_baseline
+
+        delete_baseline(args.name, baseline_dir=args.baseline_dir)
+        print(f"Baseline '{args.name}' deleted.")
+
+    else:
+        print(
+            f"Unknown baseline subcommand '{sub}'. Use 'save', 'list', 'show', or 'delete'.",
             file=sys.stderr,
         )
         sys.exit(1)
