@@ -27,6 +27,7 @@ class RequestResult:
     tool_call_success: bool | None = None  # Structured output tool call success (M56)
     tool_calls_found: int = 0  # Number of tool calls extracted (M56)
     schema_valid: bool | None = None  # JSON schema conformance (M56)
+    latency_breakdown: dict | None = None  # Network latency decomposition (M57)
 
 
 @dataclass
@@ -113,3 +114,6 @@ class BenchmarkResult:
 
     # Structured output metrics (M56)
     structured_output_metrics: dict | None = None
+
+    # Network latency decomposition (M57)
+    latency_breakdown: dict | None = None

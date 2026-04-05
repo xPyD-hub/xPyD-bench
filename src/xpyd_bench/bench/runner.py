@@ -982,6 +982,57 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
 
     _compute_metrics(result)
 
+    # Network latency decomposition (M57)
+    latency_breakdown_enabled = getattr(args, "latency_breakdown", False)
+    if latency_breakdown_enabled and result.requests:
+        from xpyd_bench.bench.latency_breakdown import (
+            LatencyBreakdown,
+            compute_breakdown_summary,
+            estimate_server_processing,
+            measure_connection_phases,
+            parse_url,
+        )
+
+        lb_host, lb_port, lb_tls = parse_url(base_url)
+        # Probe connection phases once (representative of first-connection cost)
+        try:
+            conn_probe = await measure_connection_phases(lb_host, lb_port, lb_tls)
+        except Exception:  # noqa: BLE001
+            conn_probe = LatencyBreakdown()
+
+        breakdowns: list[LatencyBreakdown] = []
+        first_done = False
+        for req in result.requests:
+            if not req.success:
+                continue
+            if not first_done:
+                # First request: attribute connection setup phases
+                bd = LatencyBreakdown(
+                    dns_ms=conn_probe.dns_ms,
+                    connect_ms=conn_probe.connect_ms,
+                    tls_ms=conn_probe.tls_ms,
+                    server_ms=estimate_server_processing(
+                        req.latency_ms,
+                        conn_probe.dns_ms,
+                        conn_probe.connect_ms,
+                        conn_probe.tls_ms,
+                    ),
+                )
+                first_done = True
+            else:
+                # Keep-alive requests: no connection overhead
+                bd = LatencyBreakdown(
+                    dns_ms=0.0,
+                    connect_ms=0.0,
+                    tls_ms=0.0,
+                    server_ms=req.latency_ms,
+                )
+            req.latency_breakdown = bd.to_dict()
+            breakdowns.append(bd)
+
+        if breakdowns:
+            result.latency_breakdown = compute_breakdown_summary(breakdowns)
+
     # Anomaly detection (M43)
     anomaly_threshold = getattr(args, "anomaly_threshold", 1.5)
     if anomaly_threshold and anomaly_threshold > 0:
@@ -1167,6 +1218,10 @@ def _print_summary(r: BenchmarkResult) -> None:
                 f"\n  📋 Schema Conformance: {so['schema_passes']}/{so['schema_validations']} "
                 f"passed ({so['schema_conformance_rate']}%)"
             )
+    if r.latency_breakdown:
+        from xpyd_bench.bench.latency_breakdown import print_breakdown_summary
+
+        print_breakdown_summary(r.latency_breakdown)
     print("=" * 60)
 
 
@@ -1302,4 +1357,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["sse_metrics"] = r.sse_metrics
     if r.structured_output_metrics:
         d["structured_output_metrics"] = r.structured_output_metrics
+    if r.latency_breakdown:
+        d["latency_breakdown"] = r.latency_breakdown
     return d
