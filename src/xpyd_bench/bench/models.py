@@ -32,6 +32,7 @@ class RequestResult:
     request_bytes: int | None = None  # Request payload size in bytes (M67)
     response_bytes: int | None = None  # Response payload size in bytes (M67)
     generation_tps: float | None = None  # Output tokens/s for this request (M68)
+    timeout_detected: bool = False  # Whether request timed out (M70)
 
 
 @dataclass
@@ -136,3 +137,6 @@ class BenchmarkResult:
 
     # Generation speed summary (M68)
     generation_speed_summary: dict | None = None
+
+    # Timeout classification summary (M70)
+    timeout_summary: dict | None = None
