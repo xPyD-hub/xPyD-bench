@@ -782,3 +782,49 @@
 - HTML report includes interactive CDF chart
 - YAML config support (`token_cdf: true`)
 - Tests covering CDF computation, bimodal detection, and HTML chart generation
+
+## M92: Prompt Caching Cost Analysis ✗
+- `--analyze-cache-savings` flag to estimate cost savings from prompt caching (shared prefixes)
+- Analyze dataset for common prefix patterns across prompts
+- Report: cacheable token ratio, estimated cache hit rate, projected cost reduction
+- `BenchmarkResult` includes `cache_savings` section with savings breakdown
+- Integrate with existing cost model (`--cost-model`) for dollar-amount estimates
+- `--cache-pricing-ratio <float>` for cached vs uncached token price ratio (default 0.5)
+- YAML config support (`analyze_cache_savings`, `cache_pricing_ratio`)
+- Tests covering prefix analysis, savings calculation, cost integration, and edge cases
+
+## M93: Request Pacing Accuracy Report ✗
+- `--pacing-report` flag to measure how accurately the client maintains target request rate
+- Compare actual inter-request intervals vs intended schedule
+- Report: mean/P50/P99 pacing error, drift over time, burst detection
+- `BenchmarkResult` includes `pacing_report` with accuracy stats
+- Useful for validating rate limiter precision under various load patterns
+- YAML config support (`pacing_report: true`)
+- Tests covering pacing measurement, drift detection, and various rate patterns
+
+## M94: Model Output Quality Scoring ✗
+- `--quality-check <mode>` CLI flag for lightweight output quality assessment
+- Modes: `perplexity-proxy` (response length vs prompt complexity), `repetition` (n-gram repetition rate), `coherence` (sentence-level similarity)
+- Per-request quality scores in `RequestResult`
+- `BenchmarkResult` includes `quality_summary` with mean/distribution of quality scores
+- Useful for detecting quality degradation under high load
+- YAML config support (`quality_check`)
+- Tests covering all quality modes, scoring logic, and edge cases
+
+## M95: Benchmark Result Diffing by Tag ✗
+- `xpyd-bench tag-compare --result-dir <path> --group-by <tag-key>` CLI subcommand
+- Group historical results by tag value and compute cross-group comparison
+- Example: `--group-by gpu` compares A100 vs H100 vs L40S runs automatically
+- Side-by-side metrics table grouped by tag value
+- Statistical significance between groups
+- JSON and Markdown output
+- Tests covering grouping logic, comparison, and CLI integration
+
+## M96: Endpoint Response Consistency Check ✗
+- `--consistency-check N` flag to send same prompt N times and measure response variance
+- Track: token-level divergence rate, response length variance, latency consistency
+- Detect non-deterministic behavior even with temperature=0 (floating point, batching effects)
+- `BenchmarkResult` includes `consistency_summary` with variance metrics
+- Useful for validating endpoint reproducibility
+- YAML config support (`consistency_check`)
+- Tests covering consistency measurement, deterministic vs random detection, and edge cases
