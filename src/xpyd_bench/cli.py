@@ -1201,8 +1201,12 @@ def _load_yaml_config(
         previous behaviour of skipping keys whose current value is not
         ``None``.
     """
-    with open(path) as f:
-        cfg = yaml.safe_load(f) or {}
+    from xpyd_bench.config_cmd import ConfigInheritanceError, _resolve_yaml_chain
+
+    try:
+        cfg = _resolve_yaml_chain(path)
+    except (ConfigInheritanceError, yaml.YAMLError, OSError) as exc:
+        raise SystemExit(f"Error loading config {path}: {exc}") from exc
     for key, value in cfg.items():
         attr = key.replace("-", "_")
         if explicit_keys is not None:

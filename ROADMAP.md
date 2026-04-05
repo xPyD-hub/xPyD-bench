@@ -664,3 +664,15 @@
 - `--dry-run` output shows git metadata section
 - Graceful fallback: returns None when git unavailable, not in repo, or command times out
 - Tests covering git info collection, fallback scenarios, serialization, and model field
+
+## M80: Configuration Inheritance (extends) ✅
+- `extends: <path>` key in YAML config to inherit from a parent config file
+- Relative paths resolved against the config file's directory
+- Multi-level inheritance supported (child → parent → grandparent)
+- Child values override parent values; parent provides defaults
+- Circular inheritance detected with clear error message
+- `extends` key removed from resolved config (not passed to benchmark)
+- `config validate` checks inheritance chain validity
+- `config dump` shows fully resolved config with inheritance applied
+- CLI flags take highest precedence (CLI > child YAML > parent YAML)
+- Tests covering single/multi-level inheritance, circular detection, CLI precedence, and error cases

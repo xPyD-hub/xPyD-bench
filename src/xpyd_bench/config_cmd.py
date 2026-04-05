@@ -126,10 +126,57 @@ _KNOWN_KEYS: set[str] = {
     "synthetic_image_size",
     "image_detail",
     "workload_stats",
+    "extends",
 }
 
 # Deprecated keys (currently none, placeholder for future use)
 _DEPRECATED_KEYS: dict[str, str] = {}
+
+
+class ConfigInheritanceError(Exception):
+    """Raised when config inheritance chain is invalid (circular, missing, etc.)."""
+
+
+def _resolve_yaml_chain(path: str, _seen: set[str] | None = None) -> dict[str, Any]:
+    """Resolve a YAML config file with ``extends`` inheritance.
+
+    Walks the ``extends`` chain, merging parent → child (child wins).
+    Detects circular references and raises ``ConfigInheritanceError``.
+
+    Returns the fully merged config dict (``extends`` key removed).
+    """
+    config_path = Path(path).resolve()
+    if _seen is None:
+        _seen = set()
+    key = str(config_path)
+    if key in _seen:
+        raise ConfigInheritanceError(
+            f"Circular config inheritance detected: {key}"
+        )
+    _seen.add(key)
+
+    with open(config_path) as f:
+        cfg = yaml.safe_load(f) or {}
+
+    if not isinstance(cfg, dict):
+        raise ConfigInheritanceError(
+            f"Config must be a YAML mapping in {config_path}, got {type(cfg).__name__}"
+        )
+
+    extends = cfg.pop("extends", None)
+    if extends is not None:
+        # Resolve relative to the config file's directory
+        parent_path = (config_path.parent / extends).resolve()
+        if not parent_path.exists():
+            raise ConfigInheritanceError(
+                f"Extended config not found: {parent_path} (referenced from {config_path})"
+            )
+        parent_cfg = _resolve_yaml_chain(str(parent_path), _seen)
+        # Parent first, then child overlays
+        parent_cfg.update(cfg)
+        cfg = parent_cfg
+
+    return cfg
 
 
 def _load_and_check_yaml(path: str) -> tuple[dict[str, Any], list[str], list[str]]:
@@ -143,18 +190,16 @@ def _load_and_check_yaml(path: str) -> tuple[dict[str, Any], list[str], list[str
         return {}, warnings, errors
 
     try:
-        with open(config_path) as f:
-            cfg = yaml.safe_load(f)
+        cfg = _resolve_yaml_chain(str(config_path))
+    except ConfigInheritanceError as e:
+        errors.append(str(e))
+        return {}, warnings, errors
     except yaml.YAMLError as e:
         errors.append(f"Invalid YAML syntax: {e}")
         return {}, warnings, errors
 
-    if cfg is None:
+    if not cfg:
         warnings.append("Config file is empty")
-        return {}, warnings, errors
-
-    if not isinstance(cfg, dict):
-        errors.append(f"Config must be a YAML mapping, got {type(cfg).__name__}")
         return {}, warnings, errors
 
     for key in cfg:
