@@ -726,6 +726,17 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Attach a human-readable note/description to this benchmark run",
     )
 
+    # Custom percentiles (M73)
+    parser.add_argument(
+        "--percentiles",
+        type=str,
+        default=None,
+        help=(
+            "Comma-separated percentiles to compute, e.g. '50,90,95,99,99.9'. "
+            "Default: 50,90,95,99"
+        ),
+    )
+
     # Tags (M36)
     parser.add_argument(
         "--tag",
