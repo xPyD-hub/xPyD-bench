@@ -150,3 +150,6 @@ class BenchmarkResult:
 
     # Custom percentile results (M73)
     custom_percentiles: dict | None = None
+
+    # Workload distribution statistics (M78)
+    workload_stats: dict | None = None

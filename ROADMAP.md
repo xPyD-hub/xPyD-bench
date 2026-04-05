@@ -644,3 +644,14 @@
 - Dummy server handles multimodal content in token estimation
 - YAML config support (`image_url`, `image_dir`, `synthetic_images`, `synthetic_image_size`, `image_detail`)
 - Tests covering image generation, content building, CLI parsing, payload construction, and config keys
+
+## M78: Workload Distribution Statistics ✅
+- `--workload-stats` CLI flag to compute and display prompt/output token length distributions
+- Per-request `prompt_tokens` and `completion_tokens` already tracked; aggregate into distribution stats
+- Report mean, stddev, min, max, P50/P90/P99 for both prompt and output token lengths
+- Terminal summary table with distribution overview
+- JSON output includes `workload_stats` section
+- HTML report includes prompt/output length distribution histograms
+- Useful for understanding actual workload characteristics vs configured parameters
+- YAML config support (`workload_stats: true`)
+- Tests covering stats computation, CLI flag, YAML config, and edge cases

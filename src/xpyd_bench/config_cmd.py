@@ -125,6 +125,7 @@ _KNOWN_KEYS: set[str] = {
     "synthetic_images",
     "synthetic_image_size",
     "image_detail",
+    "workload_stats",
 }
 
 # Deprecated keys (currently none, placeholder for future use)
