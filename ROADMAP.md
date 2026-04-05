@@ -773,7 +773,7 @@
 - YAML config support (`warmup_curve: true`)
 - Tests covering curve fitting, convergence detection, and edge cases
 
-## M91: Token-Level Streaming Latency CDF ✗
+## M91: Token-Level Streaming Latency CDF ✅
 - `--token-cdf` flag to compute cumulative distribution function of inter-token latencies
 - Collect per-token arrival timestamps from streaming responses
 - Report percentiles at fine granularity (P1 through P99.9)
