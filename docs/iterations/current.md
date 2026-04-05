@@ -2,41 +2,29 @@
 
 > Updated: 2026-04-06
 
-## Current Milestone: M90 — Request Warm-up Curve Analysis
+## Current Milestone: M95 — Benchmark Result Diffing by Tag
 
 ### What was done
 
-- Added `--warmup-curve` CLI flag for warmup curve analysis
-- New module `src/xpyd_bench/bench/warmup_curve.py` implementing:
-  - `fit_exponential_decay()` — fits `f(x) = a * exp(-b * x) + c` to latency data
-  - `detect_convergence()` — finds the request index where latency stabilizes
-  - `render_ascii_curve()` — ASCII visualization with observed data points, fitted curve, and convergence marker
-  - `build_warmup_curve()` — orchestrates fitting, convergence detection, and result packaging
-  - `print_warmup_curve()` — terminal output with fit parameters, R², cold-start penalty
-  - `WarmupCurveResult` dataclass with `to_dict()` serialization
-- `BenchmarkResult` includes `warmup_curve` dict field in JSON output
-- YAML config support (`warmup_curve: true`)
-- Config key added to `_KNOWN_KEYS`
-- Runner integration: analyzes all successful request latencies sorted by send time
-- 16 tests covering:
-  - Perfect and noisy exponential decay fitting
-  - Flat data and edge cases (too few points, empty)
-  - Convergence detection (fast, no-decay, slow)
-  - ASCII rendering with and without convergence marker
-  - Realistic warmup patterns and no-warmup scenarios
-  - Serialization to dict
-
-### Different from M51 (Warmup Profiling)
-- M51: Simple stabilization detection using rolling CV threshold
-- M90: Mathematical exponential decay curve fitting with R² goodness-of-fit, convergence point, and ASCII visualization
+- Added `xpyd-bench tag-compare --result-dir <path> --group-by <tag-key>` CLI subcommand
+- New module `src/xpyd_bench/tag_compare.py` implementing:
+  - `group_results_by_tag()` — groups JSON results by tag value
+  - `compute_group_stats()` — per-group mean for all standard metrics
+  - `compute_pairwise_significance()` — Mann-Whitney U test between all group pairs
+  - `tag_compare()` — full orchestration returning structured result
+  - `format_tag_compare_table()` — human-readable terminal output
+  - `format_tag_compare_markdown()` — Markdown table output
+  - `tag_compare_main()` — CLI entry point
+- `--json` flag for machine-readable JSON output
+- `--markdown` flag for Markdown table output
+- Exit code 1 when no groups found
+- Registered `tag-compare` subcommand in `main.py`
+- 33 tests covering grouping, stats, significance, formatting, CLI, edge cases
 
 ### Files Changed
-- `src/xpyd_bench/bench/warmup_curve.py` (new)
-- `src/xpyd_bench/bench/models.py` (added `warmup_curve` field)
-- `src/xpyd_bench/bench/runner.py` (integration + JSON serialization)
-- `src/xpyd_bench/cli.py` (added `--warmup-curve` flag)
-- `src/xpyd_bench/config_cmd.py` (added to `_KNOWN_KEYS`)
-- `tests/test_warmup_curve.py` (new, 16 tests)
+- `src/xpyd_bench/tag_compare.py` (new)
+- `src/xpyd_bench/main.py` (registered `tag-compare` subcommand)
+- `tests/test_tag_compare.py` (new, 33 tests)
 - `docs/iterations/current.md` (this file)
 
 ---
@@ -96,4 +84,5 @@
 | 3 | 2026-04-06 | M91: Token-Level Streaming Latency CDF | ✅ merged (PR #246) | Both approved |
 | 4 | 2026-04-06 | M92: Prompt Caching Cost Analysis | ✅ merged (PR #248) | Both approved |
 | 5 | 2026-04-06 | M93: Request Pacing Accuracy Report | ✅ merged (PR #250) | Both approved |
-| 6 | 2026-04-06 | M94: Model Output Quality Scoring | ⏳ in progress | — |
+| 6 | 2026-04-06 | M94: Model Output Quality Scoring | ✅ merged (PR #252) | Both approved |
+| 7 | 2026-04-06 | M95: Benchmark Result Diffing by Tag | ⏳ in progress | — |
