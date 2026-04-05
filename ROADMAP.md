@@ -425,7 +425,7 @@
 - YAML config support (`warmup_profile: true`)
 - Tests covering warmup detection, profiling output, and edge cases
 
-## M52: Request Priority & Queuing
+## M52: Request Priority & Queuing ✅
 - `--priority-levels N` CLI flag to simulate priority-based request scheduling
 - Priority field in JSONL dataset format (`"priority": 0-9`)
 - Metrics broken down by priority level (latency, throughput, error rate)
