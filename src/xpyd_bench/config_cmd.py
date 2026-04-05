@@ -109,6 +109,8 @@ _KNOWN_KEYS: set[str] = {
     "inject_delay",
     "inject_error_rate",
     "inject_payload_corruption",
+    "webhook_url",
+    "webhook_secret",
 }
 
 # Deprecated keys (currently none, placeholder for future use)

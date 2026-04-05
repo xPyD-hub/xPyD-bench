@@ -496,3 +496,24 @@
 - `--inject-payload-corruption <float>` to send malformed payloads
 - Measure server resilience and error handling under adverse conditions
 - Tests covering injection modes and metric impact
+
+## M61: Webhook Notifications ✅
+- `--webhook-url <url>` CLI flag (repeatable) to POST benchmark results to webhook endpoints
+- `--webhook-secret <secret>` for HMAC-SHA256 signature in `X-Webhook-Signature` header
+- Timeout and retry on delivery failure (max 3 attempts with backoff)
+- Non-blocking: webhook failure does not affect benchmark exit code
+- YAML config support (`webhook_url`, `webhook_secret`)
+- Tests covering delivery, signature, retry, server error, and CLI integration
+
+## M62: Request Trace Export (OpenTelemetry)
+- `--otlp-endpoint <url>` to export per-request spans to an OpenTelemetry collector
+- Span attributes: prompt_tokens, completion_tokens, TTFT, TPOT, model, endpoint
+- Parent span for entire benchmark run with child spans per request
+- YAML config support (`otlp_endpoint`)
+- Tests covering span generation and attribute correctness
+
+## M63: Benchmark Scheduling & Cron Integration
+- `xpyd-bench schedule --cron "0 */6 * * *" --config bench.yaml` to generate crontab entries
+- `--on-complete <command>` to run shell command after benchmark (e.g., notify, upload)
+- Schedule validation and human-readable next-run preview
+- Tests covering cron generation and on-complete execution
