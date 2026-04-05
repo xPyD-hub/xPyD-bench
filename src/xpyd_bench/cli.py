@@ -1121,13 +1121,21 @@ def _dry_run(args: argparse.Namespace, base_url: str) -> None:
         print("  (estimated from num_prompts × input_len / output_len)")
 
     # Environment info
-    from xpyd_bench.bench.env import collect_env_info
+    from xpyd_bench.bench.env import collect_env_info, collect_git_info
 
     env = collect_env_info()
     print()
     print("Environment:")
     for k, v in env.items():
         print(f"  {k}: {v}")
+
+    # Git metadata
+    git_info = collect_git_info()
+    if git_info:
+        print()
+        print("Git:")
+        for k, v in git_info.items():
+            print(f"  {k}: {v}")
 
     print(f"{'='*60}")
 
