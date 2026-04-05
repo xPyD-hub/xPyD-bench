@@ -271,6 +271,10 @@ async def _send_request(
             result.success = False
             result.error = str(exc)
 
+            # M70: Classify timeout exceptions
+            if isinstance(exc, (httpx.TimeoutException,)):
+                result.timeout_detected = True
+
             # Retry if applicable
             if attempt < retries and _is_retryable(exc):
                 delay = retry_delay * (2**attempt)
@@ -377,6 +381,10 @@ async def _send_streaming(
     except Exception as exc:  # noqa: BLE001
         result.success = False
         result.error = str(exc)
+
+        # M70: Classify timeout exceptions
+        if isinstance(exc, (httpx.TimeoutException,)):
+            result.timeout_detected = True
 
     end = time.perf_counter()
     result.latency_ms = (end - start) * 1000.0
@@ -1267,6 +1275,13 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             so_summary = aggregate_structured_output(so_results)
             result.structured_output_metrics = so_summary.to_dict()
 
+    # Timeout classification (M70)
+    from xpyd_bench.bench.timeout_stats import compute_timeout_summary
+
+    timeout_summary = compute_timeout_summary(result.requests)
+    if timeout_summary:
+        result.timeout_summary = timeout_summary
+
     if reporter:
         reporter.print_summary_table(result)
     else:
@@ -1350,6 +1365,18 @@ def _print_summary(r: BenchmarkResult) -> None:
         total = rl.get("total_responses", 0)
         parts.append(f"tracked={tracked}/{total}")
         print(f"\n  🚦 Rate-Limits: {', '.join(parts)}")
+    if r.timeout_summary:
+        ts = r.timeout_summary
+        print(
+            f"\n  ⏱️  Timeouts: {ts['timeout_count']}/{ts['total_requests']} "
+            f"requests timed out ({ts['timeout_percentage']}%)"
+        )
+        if "mean_latency_at_timeout_ms" in ts:
+            print(
+                f"      Latency at timeout: mean={ts['mean_latency_at_timeout_ms']:.2f} "
+                f"min={ts['min_latency_at_timeout_ms']:.2f} "
+                f"max={ts['max_latency_at_timeout_ms']:.2f} ms"
+            )
     print("=" * 60)
 
 
@@ -1491,4 +1518,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["latency_breakdown"] = r.latency_breakdown
     if r.noise_injection:
         d["noise_injection"] = r.noise_injection
+    if r.timeout_summary:
+        d["timeout_summary"] = r.timeout_summary
     return d
