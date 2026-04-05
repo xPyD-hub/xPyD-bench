@@ -37,6 +37,7 @@ class RequestResult:
     queue_time_ms: float | None = None  # Client-side queuing time in ms (M71)
     response_hash: str | None = None  # SHA-256 hash of response text (M85)
     spec_events: list | None = None  # Speculative decoding events (M88)
+    quality_scores: dict | None = None  # Per-mode quality scores (M94)
 
 
 @dataclass
@@ -182,3 +183,6 @@ class BenchmarkResult:
 
     # Pacing accuracy report (M93)
     pacing_report: dict | None = None
+
+    # Model output quality scoring (M94)
+    quality_summary: dict | None = None

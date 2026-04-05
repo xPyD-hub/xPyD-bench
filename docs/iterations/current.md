@@ -95,4 +95,5 @@
 | 2 | 2026-04-06 | M90: Request Warm-up Curve Analysis | ✅ merged | Both approved |
 | 3 | 2026-04-06 | M91: Token-Level Streaming Latency CDF | ✅ merged (PR #246) | Both approved |
 | 4 | 2026-04-06 | M92: Prompt Caching Cost Analysis | ✅ merged (PR #248) | Both approved |
-| 5 | 2026-04-06 | M93: Request Pacing Accuracy Report | ⏳ in progress | — |
+| 5 | 2026-04-06 | M93: Request Pacing Accuracy Report | ✅ merged (PR #250) | Both approved |
+| 6 | 2026-04-06 | M94: Model Output Quality Scoring | ⏳ in progress | — |

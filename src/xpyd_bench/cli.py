@@ -549,6 +549,19 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Measure and report request pacing accuracy vs target rate.",
     )
 
+    # Model output quality scoring (M94)
+    parser.add_argument(
+        "--quality-check",
+        action="append",
+        default=None,
+        dest="quality_check",
+        metavar="MODE",
+        help=(
+            "Lightweight output quality assessment mode (repeatable). "
+            "Modes: perplexity-proxy, repetition, coherence."
+        ),
+    )
+
     # Network latency decomposition (M57)
     parser.add_argument(
         "--latency-breakdown",
