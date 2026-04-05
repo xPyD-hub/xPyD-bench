@@ -82,6 +82,7 @@ _SUBCOMMANDS = {
     "archive",
     "chain",
     "schedule",
+    "discover",
 }
 
 
@@ -169,6 +170,10 @@ def main() -> None:
         from xpyd_bench.schedule import schedule_main
 
         schedule_main(rest)
+    elif subcmd == "discover":
+        from xpyd_bench.discover import discover_main
+
+        discover_main(rest)
 
 
 def _config_subcommand(argv: list[str]) -> None:
