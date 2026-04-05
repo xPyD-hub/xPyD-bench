@@ -820,7 +820,7 @@
 - JSON and Markdown output
 - Tests covering grouping logic, comparison, and CLI integration
 
-## M96: Endpoint Response Consistency Check ✗
+## M96: Endpoint Response Consistency Check ✅
 - `--consistency-check N` flag to send same prompt N times and measure response variance
 - Track: token-level divergence rate, response length variance, latency consistency
 - Detect non-deterministic behavior even with temperature=0 (floating point, batching effects)
@@ -828,3 +828,12 @@
 - Useful for validating endpoint reproducibility
 - YAML config support (`consistency_check`)
 - Tests covering consistency measurement, deterministic vs random detection, and edge cases
+
+## M97: Request Latency Heatmap Data Export ✗
+- `--heatmap-export <path>` CLI flag to export latency data in heatmap-ready format
+- Time bucketed (configurable bucket width, default 1s) with latency distribution per bucket
+- Output: JSON with `buckets[]` containing `{time_start, time_end, latency_histogram}` entries
+- Histogram uses configurable bin edges (default: 0-50ms, 50-100ms, 100-200ms, 200-500ms, 500ms-1s, 1s+)
+- YAML config support (`heatmap_export`, `heatmap_bucket_width`, `heatmap_bins`)
+- Useful for visualizing latency distribution changes over benchmark duration
+- Tests covering bucketing logic, histogram binning, export format, and edge cases
