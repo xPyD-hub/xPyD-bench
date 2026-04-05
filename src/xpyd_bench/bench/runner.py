@@ -557,6 +557,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         )
         validate_and_report(entries, dataset_path, tokenizer=getattr(args, "tokenizer", None))
         prompts = [e.prompt for e in entries]
+        prompt_priorities = [e.priority for e in entries]
         # Override num_prompts to match actual dataset size
         args.num_prompts = len(prompts)
     else:
@@ -586,9 +587,11 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
                 entries, f"synthetic ({dataset_name})", tokenizer=tokenizer_arg
             )
             prompts = [e.prompt for e in entries]
+            prompt_priorities = [e.priority for e in entries]
             args.num_prompts = len(prompts)
         else:
             prompts = _generate_random_prompts(args.num_prompts, args.input_len, args.seed)
+            prompt_priorities = [None] * args.num_prompts
 
     # Apply template variable substitution (M37)
     template_vars_path = getattr(args, "template_vars", None)
@@ -794,7 +797,9 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         if not args.disable_tqdm:
             print(f"Metrics WebSocket server started on ws://0.0.0.0:{ws_port}/metrics")
 
-    async def _tracked_task(client: httpx.AsyncClient, prompt: str) -> RequestResult:
+    async def _tracked_task(
+        client: httpx.AsyncClient, prompt: str, priority: int | None = None,
+    ) -> RequestResult:
         payload = _mk_payload(prompt)
         r = await _task(client, prompt)
         if debug_logger:
@@ -821,6 +826,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
                 prompt_tokens=r.prompt_tokens,
                 completion_tokens=r.completion_tokens,
             )
+        r.priority = priority
         return r
 
     grace_period = getattr(args, "shutdown_grace_period", 5.0) or 5.0
@@ -846,6 +852,26 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         i = 0
         deadline = (overall_start + duration_limit) if duration_limit else None
 
+        # Priority scheduling (M52) — sort prompts by priority before dispatch
+        priority_levels = getattr(args, "priority_levels", 0) or 0
+        if priority_levels > 0 and not duration_limit:
+            # Build (priority, original_index) pairs and sort by priority (0=highest)
+            indexed = list(range(len(prompts)))
+            pri_list = [
+                (
+                    prompt_priorities[j]
+                    if prompt_priorities[j] is not None
+                    else priority_levels - 1,
+                    j,
+                )
+                for j in indexed
+            ]
+            pri_list.sort(key=lambda x: x[0])
+            sorted_prompts = [prompts[j] for _, j in pri_list]
+            sorted_priorities = [p for p, _ in pri_list]
+            prompts = sorted_prompts
+            prompt_priorities = sorted_priorities
+
         while True:
             if shutdown_requested:
                 break
@@ -859,6 +885,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
                 break
 
             prompt = prompts[i % prompt_count]
+            prompt_pri = prompt_priorities[i % prompt_count] if prompt_priorities else None
 
             if i > 0:
                 interval_idx = i if i < len(intervals) else i % len(intervals)
@@ -870,7 +897,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
                     break
                 if deadline and time.perf_counter() >= deadline:
                     break
-            task = asyncio.create_task(_tracked_task(client, prompt))
+            task = asyncio.create_task(_tracked_task(client, prompt, priority=prompt_pri))
             tasks.append(task)
 
             if not reporter and not args.disable_tqdm and (i + 1) % 100 == 0:
@@ -934,6 +961,14 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         anomaly_result = detect_anomalies(latencies, multiplier=anomaly_threshold)
         if anomaly_result is not None and anomaly_result.count > 0:
             result.anomalies = anomaly_result.to_dict()
+
+    # Priority metrics breakdown (M52)
+    if priority_levels > 0 and result.requests:
+        from xpyd_bench.bench.priority import compute_priority_metrics
+
+        result.priority_metrics = compute_priority_metrics(
+            result.requests, priority_levels,
+        )
 
     # Response validation (M47)
     validators_specs = getattr(args, "validate_response", None) or []
@@ -1153,4 +1188,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["anomalies"] = r.anomalies
     if r.warmup_profile:
         d["warmup_profile"] = r.warmup_profile
+    if r.priority_metrics:
+        d["priority_metrics"] = r.priority_metrics
     return d

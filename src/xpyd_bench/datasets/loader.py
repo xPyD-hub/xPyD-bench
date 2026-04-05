@@ -29,6 +29,7 @@ class DatasetEntry:
 
     prompt: str
     output_len: int | None = None
+    priority: int | None = None
 
 
 def _estimate_tokens(text: str, tokenizer: str | None = None) -> int:
@@ -93,7 +94,10 @@ def _parse_record(record: dict[str, Any], index: int, source: str) -> DatasetEnt
     output_len = record.get("output_len") or record.get("max_tokens")
     if output_len is not None:
         output_len = int(output_len)
-    return DatasetEntry(prompt=str(prompt), output_len=output_len)
+    priority = record.get("priority")
+    if priority is not None:
+        priority = int(priority)
+    return DatasetEntry(prompt=str(prompt), output_len=output_len, priority=priority)
 
 
 def load_jsonl(path: Path) -> list[DatasetEntry]:
