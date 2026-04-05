@@ -315,6 +315,28 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         default=False,
         help="Disable live progress dashboard (auto-disabled for non-TTY).",
     )
+
+    # Verbosity (M65)
+    verbosity_group = parser.add_mutually_exclusive_group()
+    verbosity_group.add_argument(
+        "--quiet",
+        "-q",
+        action="store_const",
+        const="quiet",
+        dest="verbosity",
+        default=None,
+        help="Suppress non-essential output (errors and final JSON only).",
+    )
+    verbosity_group.add_argument(
+        "--verbose",
+        "-v",
+        action="store_const",
+        const="verbose",
+        dest="verbosity",
+        default=None,
+        help="Print extra detail (config summary, per-request progress).",
+    )
+
     vllm_ext.add_argument(
         "--ignore-eos",
         action="store_true",

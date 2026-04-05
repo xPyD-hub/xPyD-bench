@@ -528,3 +528,13 @@
 - `--generate-config <path>` writes recommended YAML config based on discovered capabilities
 - Human-readable summary with ✓/✗ indicators
 - Tests covering discovery logic, JSON output, config generation, CLI integration
+
+## M65: Output Verbosity Control ✅
+- `--quiet`/`-q` CLI flag to suppress non-essential output (errors and final JSON only)
+- `--verbose`/`-v` CLI flag for extra detail (config summary, per-request progress)
+- Default behavior unchanged (normal verbosity)
+- `Verbosity` enum and `VerbosityPrinter` utility in `src/xpyd_bench/bench/verbosity.py`
+- `parse_verbosity()` helper for string-to-enum conversion
+- YAML config support (`verbosity: quiet|normal|verbose`)
+- CLI flags override YAML config
+- Tests covering all three verbosity levels, CLI flags, and YAML config
