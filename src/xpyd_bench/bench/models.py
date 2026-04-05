@@ -101,6 +101,9 @@ class BenchmarkResult:
     # User-defined tags for annotation (M36)
     tags: dict[str, str] = field(default_factory=dict)
 
+    # Human-readable note/description for the run (M69)
+    note: str | None = None
+
     # Anomaly detection results (M43)
     anomalies: dict | None = None
 

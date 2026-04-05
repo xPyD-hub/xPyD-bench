@@ -74,6 +74,7 @@ def _load_result_summary(path: Path) -> dict | None:
         "partial": data.get("partial", False),
         "total_duration_s": data.get("total_duration_s", 0),
         "tags": data.get("tags", {}),
+        "note": data.get("note"),
     }
 
 
@@ -126,8 +127,8 @@ def format_history_table(summaries: list[dict]) -> str:
     lines: list[str] = []
     lines.append(f"{'#':>3}  {'Timestamp':<20} {'Model':<16} {'Reqs':>5} "
                  f"{'OK':>5} {'Fail':>4} {'Thr req/s':>10} {'TTFT ms':>9} "
-                 f"{'E2E ms':>9} {'Partial':>7}")
-    lines.append("-" * 110)
+                 f"{'E2E ms':>9} {'Partial':>7}  {'Note'}")
+    lines.append("-" * 130)
 
     for i, s in enumerate(summaries, 1):
         ts = s["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
@@ -136,10 +137,11 @@ def format_history_table(summaries: list[dict]) -> str:
         ttft = f"{s['mean_ttft_ms']:.1f}" if s["mean_ttft_ms"] is not None else "-"
         e2e = f"{s['mean_e2el_ms']:.1f}" if s["mean_e2el_ms"] is not None else "-"
         partial = "yes" if s["partial"] else ""
+        note = s.get("note") or ""
         lines.append(
             f"{i:>3}  {ts:<20} {model:<16} {s['num_prompts']:>5} "
             f"{s['completed']:>5} {s['failed']:>4} {thr:>10} {ttft:>9} "
-            f"{e2e:>9} {partial:>7}"
+            f"{e2e:>9} {partial:>7}  {note}"
         )
 
     # Sparkline trends (if ≥2 runs)
