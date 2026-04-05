@@ -737,6 +737,20 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         ),
     )
 
+    # Checkpoint & Resume (M74)
+    parser.add_argument(
+        "--checkpoint-dir",
+        type=str,
+        default=None,
+        help="Directory to save periodic checkpoints during benchmark",
+    )
+    parser.add_argument(
+        "--checkpoint-interval",
+        type=int,
+        default=50,
+        help="Save checkpoint every N completed requests (default: 50)",
+    )
+
     # Tags (M36)
     parser.add_argument(
         "--tag",

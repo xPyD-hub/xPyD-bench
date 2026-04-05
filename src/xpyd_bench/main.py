@@ -83,6 +83,7 @@ _SUBCOMMANDS = {
     "chain",
     "schedule",
     "discover",
+    "resume",
 }
 
 
@@ -174,6 +175,10 @@ def main() -> None:
         from xpyd_bench.discover import discover_main
 
         discover_main(rest)
+    elif subcmd == "resume":
+        from xpyd_bench.checkpoint import resume_main
+
+        resume_main(rest)
 
 
 def _config_subcommand(argv: list[str]) -> None:

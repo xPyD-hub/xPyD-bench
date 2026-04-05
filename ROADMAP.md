@@ -607,3 +607,29 @@
 - Terminal summary shows all requested percentiles
 - YAML config support (`percentiles: [50, 90, 95, 99, 99.9]`)
 - Tests covering custom percentile computation, CLI parsing, YAML config, edge cases
+
+## M74: Benchmark Checkpointing & Resume ⬜
+- `--checkpoint-dir <path>` CLI flag to enable periodic checkpointing during benchmark
+- Save completed request results every N requests (default 50) to checkpoint file
+- `xpyd-bench resume --checkpoint <path>` to resume an interrupted benchmark from checkpoint
+- Resume skips already-completed prompts and continues from where it stopped
+- Final result merges checkpoint data with new results seamlessly
+- Checkpoint file includes config snapshot for validation on resume
+- YAML config support (`checkpoint_dir`, `checkpoint_interval`)
+- Tests covering checkpoint creation, resume logic, config mismatch detection, and CLI integration
+
+## M75: Multi-Model Comparison Mode ⬜
+- `xpyd-bench model-compare --models model1,model2 --base-url <url>` CLI subcommand
+- Benchmark same prompts against multiple models on same endpoint
+- Side-by-side per-model metrics (TTFT, TPOT, throughput, latency percentiles)
+- Statistical significance testing between models (reuse diff logic)
+- JSON and Markdown comparison output
+- Tests covering multi-model orchestration, result comparison, and CLI integration
+
+## M76: Streaming vs Non-Streaming Overhead Analysis ⬜
+- `xpyd-bench stream-compare --base-url <url> --model <model>` CLI subcommand
+- Auto-run same prompts in streaming and non-streaming modes
+- Report streaming overhead: TTFT delta, total latency delta, throughput impact
+- Identify when streaming is beneficial vs detrimental
+- JSON and terminal summary output
+- Tests covering dual-mode execution, overhead calculation, and CLI integration
