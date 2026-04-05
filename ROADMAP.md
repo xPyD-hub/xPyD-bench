@@ -599,7 +599,7 @@
 - `xpyd-bench aggregate --by-fingerprint` to auto-group results by config
 - Tests covering fingerprint determinism, config normalization, and grouping
 
-## M73: Custom Percentile Configuration
+## M73: Custom Percentile Configuration ✅
 - `--percentiles 50,90,95,99,99.9` CLI flag to specify which latency percentiles to compute
 - Default: `50,90,95,99` (preserves current behavior)
 - BenchmarkResult includes `custom_percentiles` dict mapping metric prefix to {pN: value}
