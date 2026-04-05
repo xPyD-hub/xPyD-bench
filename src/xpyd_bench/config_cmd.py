@@ -102,6 +102,7 @@ _KNOWN_KEYS: set[str] = {
     "junit_xml",
     "repeat",
     "repeat_delay",
+    "priority_levels",
 }
 
 # Deprecated keys (currently none, placeholder for future use)

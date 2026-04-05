@@ -22,6 +22,7 @@ class RequestResult:
     request_id: str | None = None
     response_text: str | None = None
     validation_errors: list[str] = field(default_factory=list)
+    priority: int | None = None
 
 
 @dataclass
@@ -99,3 +100,6 @@ class BenchmarkResult:
 
     # Warmup profiling results (M51)
     warmup_profile: dict | None = None
+
+    # Priority metrics breakdown (M52)
+    priority_metrics: dict | None = None

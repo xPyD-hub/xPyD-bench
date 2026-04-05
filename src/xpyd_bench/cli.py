@@ -393,6 +393,16 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="IQR multiplier for latency anomaly detection (default: 1.5, 0 disables).",
     )
 
+    # Request priority (M52)
+    parser.add_argument(
+        "--priority-levels",
+        type=int,
+        default=0,
+        dest="priority_levels",
+        help="Number of priority levels for request scheduling (0 disables, default: 0). "
+        "Levels range from 0 (highest) to N-1 (lowest).",
+    )
+
     # Response validation (M47)
     parser.add_argument(
         "--validate-response",
