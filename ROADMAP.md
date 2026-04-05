@@ -793,7 +793,7 @@
 - YAML config support (`analyze_cache_savings`, `cache_pricing_ratio`)
 - Tests covering prefix analysis, savings calculation, cost integration, and edge cases
 
-## M93: Request Pacing Accuracy Report ✗
+## M93: Request Pacing Accuracy Report ✅
 - `--pacing-report` flag to measure how accurately the client maintains target request rate
 - Compare actual inter-request intervals vs intended schedule
 - Report: mean/P50/P99 pacing error, drift over time, burst detection
