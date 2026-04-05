@@ -1,70 +1,83 @@
 # xPyD-bench — Current Iteration Status
 
-> Updated: 2026-04-05
+> Updated: 2026-04-06
 
-## Current Milestone: M89 — Multi-LoRA Endpoint Benchmarking
+## Current Milestone: M90 — Request Warm-up Curve Analysis
 
 ### What was done
 
-- Added `xpyd-bench lora-compare` CLI subcommand
-- New module `src/xpyd_bench/lora_compare.py` implementing:
-  - Sequential benchmarking of multiple LoRA adapters on the same base model
-  - `--interleave` flag for round-robin adapter switching to measure switching overhead
-  - Per-adapter metrics: TTFT, TPOT, throughput, latency percentiles
-  - Pairwise comparison with regression detection and Mann-Whitney U significance testing
-  - Adapter switching overhead calculation (sequential vs interleaved mean TTFT)
-  - JSON and terminal/Markdown comparison output
-- Registered `lora-compare` subcommand in `main.py` dispatch table
-- Added `lora_compare_main` entry point in `cli.py`
-- Comprehensive test suite in `tests/test_lora_compare.py` covering:
-  - Data class serialization
-  - Statistical significance computation
-  - Sequential and interleaved orchestration (mocked)
-  - Three-adapter comparison
-  - Summary formatting (terminal + Markdown)
-  - JSON and Markdown export
+- Added `--warmup-curve` CLI flag for warmup curve analysis
+- New module `src/xpyd_bench/bench/warmup_curve.py` implementing:
+  - `fit_exponential_decay()` — fits `f(x) = a * exp(-b * x) + c` to latency data
+  - `detect_convergence()` — finds the request index where latency stabilizes
+  - `render_ascii_curve()` — ASCII visualization with observed data points, fitted curve, and convergence marker
+  - `build_warmup_curve()` — orchestrates fitting, convergence detection, and result packaging
+  - `print_warmup_curve()` — terminal output with fit parameters, R², cold-start penalty
+  - `WarmupCurveResult` dataclass with `to_dict()` serialization
+- `BenchmarkResult` includes `warmup_curve` dict field in JSON output
+- YAML config support (`warmup_curve: true`)
+- Config key added to `_KNOWN_KEYS`
+- Runner integration: analyzes all successful request latencies sorted by send time
+- 16 tests covering:
+  - Perfect and noisy exponential decay fitting
+  - Flat data and edge cases (too few points, empty)
+  - Convergence detection (fast, no-decay, slow)
+  - ASCII rendering with and without convergence marker
+  - Realistic warmup patterns and no-warmup scenarios
+  - Serialization to dict
 
-### Result: pending review
+### Different from M51 (Warmup Profiling)
+- M51: Simple stabilization detection using rolling CV threshold
+- M90: Mathematical exponential decay curve fitting with R² goodness-of-fit, convergence point, and ASCII visualization
 
-## Feature List
+### Files Changed
+- `src/xpyd_bench/bench/warmup_curve.py` (new)
+- `src/xpyd_bench/bench/models.py` (added `warmup_curve` field)
+- `src/xpyd_bench/bench/runner.py` (integration + JSON serialization)
+- `src/xpyd_bench/cli.py` (added `--warmup-curve` flag)
+- `src/xpyd_bench/config_cmd.py` (added to `_KNOWN_KEYS`)
+- `tests/test_warmup_curve.py` (new, 16 tests)
+- `docs/iterations/current.md` (this file)
 
-### Core Benchmark
-- OpenAI-compatible API benchmark (completions / chat)
-- Streaming & non-streaming response support
-- Poisson / burst request scheduling (`--request-rate`, `--burstiness`)
-- Custom dataset loading (random / synthetic / JSONL / CSV)
+---
+
+## Capabilities Summary (M1–M90)
+
+### Core Benchmarking
+- Full vLLM bench CLI compatibility
+- OpenAI API: completions, chat, embeddings, batch, function calling, multimodal (vision)
+- Streaming and non-streaming modes
+- Multi-turn conversation benchmarking
+- Duration-based and repeat mode benchmarking
+
+### Traffic Shaping
+- Per-second, per-N-seconds, burst, ramp, Poisson rate patterns
 - Token bucket rate limiting
-- Multi-backend plugin architecture (openai / custom plugin)
-
-### Advanced Test Modes
-- **Multi-model comparison** (M75) — compare multiple models side by side
-- **Streaming vs non-streaming overhead** (M76) — streaming overhead analysis
-- **Multimodal vision benchmark** (M77) — vision model support
-- **Multi-LoRA endpoint benchmarking** (M89) — compare LoRA adapters with switching overhead
-- **Multi-turn conversation** — multi-turn dialogue testing
-- **Chain benchmark** — request chain testing
-- **Sweep mode** — parameter sweep
-- **Distributed benchmark** — multi-node coordinated load testing
+- Adaptive concurrency
+- Priority-based request scheduling
+- Request dependency chains
+- Concurrency sweep mode
 
 ### Metrics & Analysis
 - TTFT / TPOT / TPS / throughput / error rate
 - Custom percentiles (P50 / P90 / P99 / user-defined) (M73)
-- Rolling window metrics (M81) — real-time rolling window statistics
+- Rolling window metrics (M81)
 - Confidence intervals
 - Latency breakdown
 - Workload distribution statistics (M78)
 - Speculative decoding metrics (M88)
 - Prefix caching impact analysis (M87)
 - Anomaly detection
+- Warmup curve analysis (M90) — exponential decay curve fitting
 
 ### Reliability & Operations
 - Benchmark checkpointing & resume (M74)
-- Benchmark fingerprinting (M72) — unique configuration identifier
-- Baseline registry (M82) — baseline registration and regression comparison
-- Error threshold abort (M83) — auto-abort when error rate exceeds limit
+- Benchmark fingerprinting (M72)
+- Baseline registry (M82)
+- Error threshold abort (M83)
 - Request deduplication & idempotency (M85)
 - Adaptive timeout auto-tuning (M86)
-- Git metadata capture (M79) — bind results to git version
+- Git metadata capture (M79)
 - Configuration inheritance via `extends` (M80)
 
 ### Reporting & Integration
@@ -73,3 +86,10 @@
 - JUnit XML for CI integration
 - Webhook notifications
 - OpenTelemetry (OTLP) export
+
+## Iteration History
+
+| # | Date | Task | Result | Reviewer Comments |
+|---|------|------|--------|-------------------|
+| 1 | 2026-04-05 | M89: Multi-LoRA Endpoint Benchmarking | ✅ merged (PR #242) | Both approved — clean code, good test coverage |
+| 2 | 2026-04-06 | M90: Request Warm-up Curve Analysis | ⏳ in progress | — |

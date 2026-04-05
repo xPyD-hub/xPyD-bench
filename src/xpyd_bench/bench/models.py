@@ -174,3 +174,4 @@ class BenchmarkResult:
 
     # Speculative decoding summary (M88)
     speculative_summary: dict | None = None
+    warmup_curve: dict | None = None
