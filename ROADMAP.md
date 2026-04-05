@@ -383,3 +383,14 @@
 - Terminal summary shows validation pass rate
 - YAML config support (`validate_response: ["non-empty", "min-tokens:10"]`)
 - Tests covering all validation modes, aggregation, CLI integration, and YAML config
+
+## M48: Endpoint Health Check ✅
+- `xpyd-bench healthcheck --base-url <url>` CLI subcommand
+- Check connectivity, /v1/models, /v1/completions, /v1/chat/completions, /v1/embeddings
+- Auto-detect model from /v1/models when not specified
+- `--api-key` for authenticated endpoints (falls back to OPENAI_API_KEY env)
+- `--timeout` for connection timeout configuration
+- `--json` flag for machine-readable JSON output
+- Human-readable summary with ✓/✗ indicators and latency
+- Exit code 0 for healthy, 1 for unhealthy (CI-friendly)
+- Tests covering healthy, unreachable, JSON output, API key, auto-detect scenarios
