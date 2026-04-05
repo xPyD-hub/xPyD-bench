@@ -783,7 +783,7 @@
 - YAML config support (`token_cdf: true`)
 - Tests covering CDF computation, bimodal detection, and HTML chart generation
 
-## M92: Prompt Caching Cost Analysis ✗
+## M92: Prompt Caching Cost Analysis ✅
 - `--analyze-cache-savings` flag to estimate cost savings from prompt caching (shared prefixes)
 - Analyze dataset for common prefix patterns across prompts
 - Report: cacheable token ratio, estimated cache hit rate, projected cost reduction
