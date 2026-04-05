@@ -575,7 +575,7 @@
 - `note` added to known config keys for validation
 - Tests covering CLI parsing, JSON output, history display, YAML config
 
-## M70: Request Timeout Classification & Reporting ✗
+## M70: Request Timeout Classification & Reporting ✅
 - Classify timed-out vs completed vs errored requests separately in metrics
 - `BenchmarkResult` includes `timeout_summary` with count, percentage, and latency-at-timeout stats
 - Terminal summary shows timeout breakdown when timeouts occur
