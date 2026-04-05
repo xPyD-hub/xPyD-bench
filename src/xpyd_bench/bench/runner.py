@@ -907,6 +907,29 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         if not args.disable_tqdm:
             print(f"Metrics WebSocket server started on ws://0.0.0.0:{ws_port}/metrics")
 
+    # Checkpoint manager (M74)
+    checkpoint_mgr = None
+    checkpoint_dir = getattr(args, "checkpoint_dir", None)
+    if checkpoint_dir:
+        from xpyd_bench.checkpoint import CheckpointManager
+
+        _config_snap = {
+            "base_url": base_url,
+            "endpoint": args.endpoint,
+            "model": getattr(args, "model", None),
+            "num_prompts": getattr(args, "num_prompts", None),
+            "request_rate": getattr(args, "request_rate", None),
+            "max_concurrency": getattr(args, "max_concurrency", None),
+            "input_len": getattr(args, "input_len", 256),
+            "output_len": getattr(args, "output_len", 128),
+            "backend": backend_name,
+        }
+        checkpoint_mgr = CheckpointManager(
+            checkpoint_dir=checkpoint_dir,
+            interval=getattr(args, "checkpoint_interval", 50) or 50,
+            config_snapshot=_config_snap,
+        )
+
     async def _tracked_task(
         client: httpx.AsyncClient, prompt: str, priority: int | None = None,
         scheduled_time: float | None = None,
@@ -942,6 +965,8 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
                 completion_tokens=r.completion_tokens,
             )
         r.priority = priority
+        if checkpoint_mgr:
+            checkpoint_mgr.record(r)
         return r
 
     grace_period = getattr(args, "shutdown_grace_period", 5.0) or 5.0
@@ -1066,6 +1091,10 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
 
     if debug_logger:
         debug_logger.close()
+
+    # Final checkpoint save (M74)
+    if checkpoint_mgr:
+        checkpoint_mgr.save()
 
     if metrics_ws_server:
         await metrics_ws_server.stop()

@@ -118,6 +118,8 @@ _KNOWN_KEYS: set[str] = {
     "measure_generation_speed",
     "note",
     "percentiles",
+    "checkpoint_dir",
+    "checkpoint_interval",
 }
 
 # Deprecated keys (currently none, placeholder for future use)
