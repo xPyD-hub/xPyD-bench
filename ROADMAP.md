@@ -557,7 +557,7 @@
 - YAML config support (`track_payload_size: true`)
 - Tests covering tracking logic, aggregation, CLI flag, and config key
 
-## M68: Output Token Speed Benchmarking & Comparison
+## M68: Output Token Speed Benchmarking & Comparison ✅
 - `--measure-generation-speed` CLI flag to compute tokens-per-second for each request's output generation phase
 - Per-request `generation_tps` field in `RequestResult` (completion_tokens / generation_time)
 - `BenchmarkResult` includes `generation_speed_summary` with mean, P50, P90, P99 tokens/s
