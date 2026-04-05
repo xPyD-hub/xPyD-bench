@@ -618,7 +618,7 @@
 - YAML config support (`checkpoint_dir`, `checkpoint_interval`)
 - Tests covering checkpoint creation, resume logic, config mismatch detection, and CLI integration
 
-## M75: Multi-Model Comparison Mode ⬜
+## M75: Multi-Model Comparison Mode ✅
 - `xpyd-bench model-compare --models model1,model2 --base-url <url>` CLI subcommand
 - Benchmark same prompts against multiple models on same endpoint
 - Side-by-side per-model metrics (TTFT, TPOT, throughput, latency percentiles)
