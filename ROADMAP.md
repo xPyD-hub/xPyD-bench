@@ -708,7 +708,7 @@
 - CI-friendly: partial results still computed and reported
 - Tests covering abort trigger, aborted_reason content, no-abort when disabled
 
-## M84: Confidence Interval Reporting ✗
+## M84: Confidence Interval Reporting ✅
 - `--confidence-intervals` CLI flag to compute and display 95% confidence intervals for summary metrics
 - `--confidence-level <float>` to customize confidence level (default 0.95)
 - Bootstrap resampling (1000 iterations) for robust CI estimation
@@ -719,7 +719,7 @@
 - YAML config support (`confidence_intervals: true`, `confidence_level: 0.95`)
 - Tests covering CI computation, custom confidence level, small sample warning, and CLI integration
 
-## M85: Request Deduplication & Idempotency Tracking ✗
+## M85: Request Deduplication & Idempotency Tracking ✅
 - `--deduplicate` CLI flag to detect and report duplicate responses from the server
 - Hash-based response deduplication using content fingerprints
 - Track unique vs duplicate response ratio in `BenchmarkResult`

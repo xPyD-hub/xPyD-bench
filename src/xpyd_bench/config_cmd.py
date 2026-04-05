@@ -136,6 +136,7 @@ _KNOWN_KEYS: set[str] = {
     "max_error_rate_window",
     "confidence_intervals",
     "confidence_level",
+    "deduplicate",
 }
 
 # Deprecated keys (currently none, placeholder for future use)

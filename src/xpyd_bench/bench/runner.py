@@ -1346,6 +1346,18 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         if ci_result and ci_result.get("metrics"):
             result.confidence_intervals = ci_result
 
+    # Request deduplication (M85)
+    dedup_enabled = bool(getattr(args, "deduplicate", False))
+    if dedup_enabled and result.requests:
+        from xpyd_bench.bench.dedup import compute_dedup_summary, compute_response_hash
+
+        for req in result.requests:
+            if req.success and req.response_text is not None:
+                req.response_hash = compute_response_hash(req.response_text)
+        dedup = compute_dedup_summary(result.requests)
+        if dedup:
+            result.dedup_summary = dedup
+
     # Response validation (M47)
     validators_specs = getattr(args, "validate_response", None) or []
     if validators_specs:
@@ -1726,4 +1738,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["custom_percentiles"] = r.custom_percentiles
     if r.confidence_intervals:
         d["confidence_intervals"] = r.confidence_intervals
+    if r.dedup_summary:
+        d["dedup_summary"] = r.dedup_summary
     return d

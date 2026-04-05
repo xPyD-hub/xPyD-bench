@@ -614,6 +614,15 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Confidence level for CI computation (default: 0.95).",
     )
 
+    # Request deduplication (M85)
+    parser.add_argument(
+        "--deduplicate",
+        action="store_true",
+        default=False,
+        dest="deduplicate",
+        help="Detect and report duplicate responses from the server.",
+    )
+
     # Custom headers
     parser.add_argument(
         "--header",
