@@ -518,7 +518,7 @@
 - Schedule validation and human-readable next-run preview
 - Tests covering cron generation and on-complete execution
 
-## M64: Endpoint Capability Discovery
+## M64: Endpoint Capability Discovery ✅
 - `xpyd-bench discover --base-url <url>` probes endpoint to auto-detect capabilities
 - Detect: /v1/completions, /v1/chat/completions, /v1/embeddings, /v1/batch, streaming, function calling
 - Auto-discover available models via /v1/models
