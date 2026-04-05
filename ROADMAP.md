@@ -735,3 +735,50 @@
 - Per-request `effective_timeout` field in `RequestResult`
 - YAML config support (`adaptive_timeout`, `adaptive_timeout_multiplier`)
 - Tests covering timeout adaptation, multiplier config, and edge cases
+
+## M87: Prefix Caching Impact Analysis ✅
+- `xpyd-bench cache-test --base-url <url> --model <model>` CLI subcommand
+- Send batch of requests with shared prefix, measure TTFT improvement over unique prefixes
+- `--shared-prefix-ratio <float>` (0.0-1.0) control how much prefix is shared across requests
+- Compare metrics: shared-prefix vs unique-prefix TTFT, throughput delta
+- Detect and report prefix cache hit effectiveness
+- JSON output with `cache_analysis` section
+- Tests covering shared prefix generation, metric comparison, and CLI integration
+
+## M88: Speculative Decoding Metrics ✗
+- `--speculative-metrics` flag to track speculative decoding indicators in streaming responses
+- Parse draft/verify token patterns from SSE events when server exposes them
+- Track acceptance rate, draft batch sizes, speculation overhead
+- `BenchmarkResult` includes `speculative_summary` with mean acceptance rate, tokens saved
+- Terminal summary shows speculative decoding efficiency when enabled
+- YAML config support (`speculative_metrics: true`)
+- Tests covering metric parsing, acceptance rate calculation, and fallback when no spec data
+
+## M89: Multi-LoRA Endpoint Benchmarking ✗
+- `xpyd-bench lora-compare --base-url <url> --models adapter1,adapter2,base` CLI subcommand
+- Benchmark same prompts against multiple LoRA adapters on same base model
+- Measure adapter switching overhead (requests alternating between adapters vs sequential)
+- Per-adapter metrics: TTFT, TPOT, throughput
+- `--interleave` flag for round-robin adapter switching vs sequential batches
+- JSON and terminal comparison output
+- Tests covering multi-adapter orchestration, interleave mode, and result comparison
+
+## M90: Request Warm-up Curve Analysis ✗
+- `--warmup-curve` flag to measure and visualize latency stabilization over initial N requests
+- Fit exponential decay model to latency curve to estimate convergence point
+- Report: cold-start penalty (first request vs steady state), warmup convergence request count
+- Visual: ASCII plot of latency curve during warmup phase in terminal
+- `BenchmarkResult` includes `warmup_curve` section with per-request latencies and fit parameters
+- Different from M51 (warmup profiling): focuses on mathematical modeling of convergence
+- YAML config support (`warmup_curve: true`)
+- Tests covering curve fitting, convergence detection, and edge cases
+
+## M91: Token-Level Streaming Latency CDF ✗
+- `--token-cdf` flag to compute cumulative distribution function of inter-token latencies
+- Collect per-token arrival timestamps from streaming responses
+- Report percentiles at fine granularity (P1 through P99.9)
+- Detect bimodal distributions (common with batched decoding)
+- `BenchmarkResult` includes `token_latency_cdf` with CDF data points
+- HTML report includes interactive CDF chart
+- YAML config support (`token_cdf: true`)
+- Tests covering CDF computation, bimodal detection, and HTML chart generation
