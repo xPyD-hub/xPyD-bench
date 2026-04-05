@@ -395,7 +395,7 @@
 - Exit code 0 for healthy, 1 for unhealthy (CI-friendly)
 - Tests covering healthy, unreachable, JSON output, API key, auto-detect scenarios
 
-## M49: JUnit XML Export for CI Integration
+## M49: JUnit XML Export for CI Integration ✅
 - `--junit-xml <path>` CLI flag to export benchmark results as JUnit XML
 - Each request maps to a `<testcase>` element with latency as duration attribute
 - Failed requests produce `<failure>` elements with error messages
