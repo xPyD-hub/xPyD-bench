@@ -540,6 +540,15 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Track speculative decoding indicators in streaming SSE responses.",
     )
 
+    # Request pacing accuracy report (M93)
+    parser.add_argument(
+        "--pacing-report",
+        action="store_true",
+        default=False,
+        dest="pacing_report",
+        help="Measure and report request pacing accuracy vs target rate.",
+    )
+
     # Network latency decomposition (M57)
     parser.add_argument(
         "--latency-breakdown",

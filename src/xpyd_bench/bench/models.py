@@ -179,3 +179,6 @@ class BenchmarkResult:
 
     # Prompt caching cost analysis (M92)
     cache_savings: dict | None = None
+
+    # Pacing accuracy report (M93)
+    pacing_report: dict | None = None

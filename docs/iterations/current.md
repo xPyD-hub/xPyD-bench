@@ -94,4 +94,5 @@
 | 1 | 2026-04-05 | M89: Multi-LoRA Endpoint Benchmarking | ✅ merged (PR #242) | Both approved — clean code, good test coverage |
 | 2 | 2026-04-06 | M90: Request Warm-up Curve Analysis | ✅ merged | Both approved |
 | 3 | 2026-04-06 | M91: Token-Level Streaming Latency CDF | ✅ merged (PR #246) | Both approved |
-| 4 | 2026-04-06 | M92: Prompt Caching Cost Analysis | ⏳ in progress | — |
+| 4 | 2026-04-06 | M92: Prompt Caching Cost Analysis | ✅ merged (PR #248) | Both approved |
+| 5 | 2026-04-06 | M93: Request Pacing Accuracy Report | ⏳ in progress | — |
