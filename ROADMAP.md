@@ -476,7 +476,7 @@
 - HTML report includes latency waterfall chart
 - Tests covering timing decomposition and reporting
 
-## M58: Benchmark Result Archival & Cloud Storage
+## M58: Benchmark Result Archival & Cloud Storage ✅
 - `--archive <backend>` flag to push results to S3, GCS, or local archive
 - Archive manifest with run metadata for querying historical results
 - `xpyd-bench archive list` and `xpyd-bench archive fetch <run-id>` subcommands
