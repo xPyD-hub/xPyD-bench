@@ -497,6 +497,15 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Threshold in ms to flag a gap between chunks as a stall (default: 1000).",
     )
 
+    # Speculative decoding metrics (M88)
+    parser.add_argument(
+        "--speculative-metrics",
+        action="store_true",
+        default=False,
+        dest="speculative_metrics",
+        help="Track speculative decoding indicators in streaming SSE responses.",
+    )
+
     # Network latency decomposition (M57)
     parser.add_argument(
         "--latency-breakdown",

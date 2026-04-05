@@ -36,6 +36,7 @@ class RequestResult:
     effective_timeout: float | None = None  # Actual timeout used (M86)
     queue_time_ms: float | None = None  # Client-side queuing time in ms (M71)
     response_hash: str | None = None  # SHA-256 hash of response text (M85)
+    spec_events: list | None = None  # Speculative decoding events (M88)
 
 
 @dataclass
@@ -170,3 +171,6 @@ class BenchmarkResult:
 
     # Deduplication summary (M85)
     dedup_summary: dict | None = None
+
+    # Speculative decoding summary (M88)
+    speculative_summary: dict | None = None

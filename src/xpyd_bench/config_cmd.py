@@ -139,6 +139,7 @@ _KNOWN_KEYS: set[str] = {
     "deduplicate",
     "adaptive_timeout",
     "adaptive_timeout_multiplier",
+    "speculative_metrics",
 }
 
 # Deprecated keys (currently none, placeholder for future use)

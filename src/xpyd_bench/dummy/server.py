@@ -38,6 +38,8 @@ class ServerConfig:
     embedding_dim: int = 1536  # Dimensionality for embedding vectors
     max_rps: float | None = None  # If set, reject requests above this rate (429)
     ratelimit_rpm: int | None = None  # If set, include rate-limit headers in responses
+    speculative_draft_size: int = 0  # If >0, emit x_spec data in SSE chunks
+    speculative_acceptance_rate: float = 0.8  # Simulated draft token acceptance rate
 
 
 # Rate-limit tracking state for dummy server
@@ -57,6 +59,17 @@ def set_config(config: ServerConfig) -> None:
         global _ratelimit_remaining, _ratelimit_window_start  # noqa: PLW0603
         _ratelimit_remaining = config.ratelimit_rpm
         _ratelimit_window_start = time.time()
+
+
+def _maybe_add_spec_data(chunk: dict) -> None:
+    """Add speculative decoding metadata to SSE chunk if configured (M88)."""
+    if _config.speculative_draft_size > 0:
+        import random as _rng
+
+        draft = _config.speculative_draft_size
+        accepted = max(1, int(draft * _config.speculative_acceptance_rate + _rng.uniform(-1, 1)))
+        accepted = min(accepted, draft)
+        chunk["x_spec"] = {"draft_tokens": draft, "accepted_tokens": accepted}
 
 
 def _ratelimit_headers() -> dict[str, str]:
@@ -512,6 +525,7 @@ async def _stream_completions(
             }
             if seed is not None:
                 chunk["system_fingerprint"] = f"fp_seed_{seed}"
+            _maybe_add_spec_data(chunk)
             yield f"data: {json.dumps(chunk)}\n\n"
             await asyncio.sleep(_config.decode_ms / 1000.0)
 
@@ -879,6 +893,7 @@ async def _stream_chat_completions(
             }
             if seed is not None:
                 chunk["system_fingerprint"] = f"fp_seed_{seed}"
+            _maybe_add_spec_data(chunk)
             yield f"data: {json.dumps(chunk)}\n\n"
             await asyncio.sleep(_config.decode_ms / 1000.0)
 
