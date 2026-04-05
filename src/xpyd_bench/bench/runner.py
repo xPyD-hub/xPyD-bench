@@ -1299,6 +1299,11 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     if queue_time_summary:
         result.queue_time_summary = queue_time_summary
 
+    # Benchmark fingerprint (M72)
+    from xpyd_bench.bench.fingerprint import compute_fingerprint
+
+    result.fingerprint = compute_fingerprint(args)
+
     if reporter:
         reporter.print_summary_table(result)
     else:
@@ -1546,4 +1551,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["timeout_summary"] = r.timeout_summary
     if r.queue_time_summary:
         d["queue_time_summary"] = r.queue_time_summary
+    if r.fingerprint:
+        d["fingerprint"] = r.fingerprint
     return d

@@ -75,6 +75,7 @@ def _load_result_summary(path: Path) -> dict | None:
         "total_duration_s": data.get("total_duration_s", 0),
         "tags": data.get("tags", {}),
         "note": data.get("note"),
+        "fingerprint": data.get("fingerprint"),
     }
 
 
@@ -117,6 +118,44 @@ def list_history(
         summaries = summaries[-last_n:]
 
     return summaries
+
+
+def format_history_by_fingerprint(summaries: list[dict]) -> str:
+    """Group history summaries by fingerprint and format as grouped table (M72)."""
+    if not summaries:
+        return "No benchmark results found."
+
+    groups: dict[str, list[dict]] = {}
+    ungrouped: list[dict] = []
+    for s in summaries:
+        fp = s.get("fingerprint")
+        if fp:
+            groups.setdefault(fp, []).append(s)
+        else:
+            ungrouped.append(s)
+
+    lines: list[str] = []
+    for fp, runs in sorted(groups.items(), key=lambda x: x[1][0]["timestamp"]):
+        short_fp = fp[:12]
+        lines.append(f"\n🔑 Fingerprint: {short_fp}... ({len(runs)} run(s))")
+        lines.append(f"   {'Timestamp':<20} {'Model':<16} {'Thr req/s':>10} "
+                     f"{'TTFT ms':>9} {'E2E ms':>9}")
+        lines.append("   " + "-" * 70)
+        for s in runs:
+            ts = s["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+            model = (s["model"] or "?")[:15]
+            thr = f"{s['request_throughput']:.1f}" if s["request_throughput"] is not None else "-"
+            ttft = f"{s['mean_ttft_ms']:.1f}" if s["mean_ttft_ms"] is not None else "-"
+            e2e = f"{s['mean_e2el_ms']:.1f}" if s["mean_e2el_ms"] is not None else "-"
+            lines.append(f"   {ts:<20} {model:<16} {thr:>10} {ttft:>9} {e2e:>9}")
+
+    if ungrouped:
+        lines.append(f"\n⚠️  No fingerprint ({len(ungrouped)} run(s))")
+        for s in ungrouped:
+            ts = s["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+            lines.append(f"   {ts} - {s.get('model', '?')}")
+
+    return "\n".join(lines)
 
 
 def format_history_table(summaries: list[dict]) -> str:
@@ -211,6 +250,12 @@ def history_main(argv: list[str] | None = None) -> None:
         metavar="KEY=VALUE",
         help="Filter results by tag (repeatable). E.g. --filter-tag env=prod",
     )
+    parser.add_argument(
+        "--group-by-fingerprint",
+        action="store_true",
+        default=False,
+        help="Group results by benchmark fingerprint (M72).",
+    )
     args = parser.parse_args(argv)
 
     # Parse filter tags
@@ -223,4 +268,8 @@ def history_main(argv: list[str] | None = None) -> None:
                 filter_tags[k.strip()] = v.strip()
 
     summaries = list_history(args.result_dir, last_n=args.last, filter_tags=filter_tags)
-    print(format_history_table(summaries))
+
+    if args.group_by_fingerprint:
+        print(format_history_by_fingerprint(summaries))
+    else:
+        print(format_history_table(summaries))
