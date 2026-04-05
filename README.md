@@ -1,3 +1,5 @@
+📖 **[完整使用指南 → docs/guide.md](docs/guide.md)**
+
 # xPyD-bench
 
 Benchmarking & PD ratio planning tool for [xPyD-proxy](https://github.com/xPyD-hub/xPyD-proxy).
