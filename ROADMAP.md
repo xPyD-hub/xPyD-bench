@@ -505,7 +505,7 @@
 - YAML config support (`webhook_url`, `webhook_secret`)
 - Tests covering delivery, signature, retry, server error, and CLI integration
 
-## M62: Request Trace Export (OpenTelemetry)
+## M62: Request Trace Export (OpenTelemetry) ✅
 - `--otlp-endpoint <url>` to export per-request spans to an OpenTelemetry collector
 - Span attributes: prompt_tokens, completion_tokens, TTFT, TPOT, model, endpoint
 - Parent span for entire benchmark run with child spans per request
