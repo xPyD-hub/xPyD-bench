@@ -77,6 +77,16 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Total number of prompts/requests to send (default: 1000).",
     )
     parser.add_argument(
+        "--duration",
+        type=float,
+        default=None,
+        help=(
+            "Run benchmark for a fixed duration in seconds. Prompts cycle "
+            "round-robin until time expires. When combined with --num-prompts, "
+            "benchmark stops at whichever limit is reached first."
+        ),
+    )
+    parser.add_argument(
         "--request-rate",
         type=float,
         default=float("inf"),
@@ -693,6 +703,12 @@ def _dry_run(args: argparse.Namespace, base_url: str) -> None:
     print(f"  Backend:         {args.backend}")
     print(f"  Model:           {args.model or '(auto-detect)'}")
     print(f"  Num prompts:     {args.num_prompts}")
+    duration_limit = getattr(args, "duration", None)
+    if duration_limit:
+        print(f"  Duration limit:  {duration_limit}s")
+        print("  Mode:            duration (prompts cycle until time expires)")
+    else:
+        print(f"  Mode:            count-based ({args.num_prompts} prompts)")
     print(f"  Request rate:    {args.request_rate}")
     print(f"  Max concurrency: {args.max_concurrency or 'unlimited'}")
     print(f"  Input len:       {args.input_len}")

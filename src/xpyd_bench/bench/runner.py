@@ -619,6 +619,9 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     # Concurrency limiter
     semaphore = asyncio.Semaphore(args.max_concurrency) if args.max_concurrency else None
 
+    # Duration mode (M46)
+    duration_limit = getattr(args, "duration", None)
+
     result = BenchmarkResult(
         backend=args.backend,
         base_url=base_url,
@@ -629,6 +632,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         max_concurrency=args.max_concurrency,
         input_len=args.input_len,
         output_len=args.output_len,
+        duration_limit=duration_limit,
         environment=collect_env_info(),
     )
 
@@ -699,13 +703,13 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         from xpyd_bench.reporting.rich_output import LiveDashboard
 
         _LiveDashboardType = LiveDashboard
-        reporter = LiveDashboard(total=args.num_prompts)
+        reporter = LiveDashboard(total=args.num_prompts if not duration_limit else 0)
     elif not args.disable_tqdm and not no_live:
         use_rich = getattr(args, "rich_progress", False)
         if use_rich:
             from xpyd_bench.reporting.rich_output import RichProgressReporter
 
-            reporter = RichProgressReporter(total=args.num_prompts)
+            reporter = RichProgressReporter(total=args.num_prompts if not duration_limit else 0)
 
     # --- Warmup phase ---
     warmup_count = getattr(args, "warmup", 0) or 0
@@ -806,21 +810,43 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         except NotImplementedError:
             pass  # Windows doesn't support add_signal_handler
 
-        for i, prompt in enumerate(prompts):
+        # Duration-based or count-based request dispatch
+        prompt_count = len(prompts)
+        i = 0
+        deadline = (overall_start + duration_limit) if duration_limit else None
+
+        while True:
             if shutdown_requested:
                 break
+            # Check duration limit
+            if deadline and time.perf_counter() >= deadline:
+                break
+            # Check num_prompts limit (unless in pure duration mode)
+            if not duration_limit and i >= len(prompts):
+                break
+            if duration_limit and args.num_prompts and i >= args.num_prompts:
+                break
+
+            prompt = prompts[i % prompt_count]
+
             if i > 0:
+                interval_idx = i if i < len(intervals) else i % len(intervals)
                 if token_bucket:
                     await token_bucket.acquire()
                 else:
-                    await asyncio.sleep(intervals[i])
+                    await asyncio.sleep(intervals[interval_idx])
                 if shutdown_requested:
+                    break
+                if deadline and time.perf_counter() >= deadline:
                     break
             task = asyncio.create_task(_tracked_task(client, prompt))
             tasks.append(task)
 
             if not reporter and not args.disable_tqdm and (i + 1) % 100 == 0:
-                print(f"  Launched {i + 1}/{args.num_prompts} requests...")
+                total_label = args.num_prompts if not duration_limit else "∞"
+                print(f"  Launched {i + 1}/{total_label} requests...")
+
+            i += 1
 
         # Wait for all launched tasks to complete (with grace period if shutting down)
         if shutdown_requested and tasks:
@@ -855,6 +881,10 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     result.total_duration_s = overall_end - overall_start
     result.requests = results_list
     result.partial = shutdown_requested
+
+    # Update num_prompts to actual count in duration mode
+    if duration_limit:
+        result.num_prompts = len(results_list)
 
     if debug_logger:
         debug_logger.close()

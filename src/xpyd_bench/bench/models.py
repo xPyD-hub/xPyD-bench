@@ -36,6 +36,7 @@ class BenchmarkResult:
     max_concurrency: int | None = None
     input_len: int = 256
     output_len: int = 128
+    duration_limit: float | None = None
 
     # Per-request results
     requests: list[RequestResult] = field(default_factory=list)

@@ -363,3 +363,13 @@
 - Dummy server stateful conversation support (maintains context window)
 - YAML config support (`multi_turn`, `max_turns`)
 - Tests covering multi-turn execution, per-turn metrics, context growth, and CLI integration
+
+## M46: Duration-based Benchmarking ✅
+- `--duration SECONDS` CLI flag to run benchmark for a fixed time period
+- Prompts cycle round-robin until duration expires
+- When combined with `--num-prompts`, benchmark stops at whichever limit is reached first
+- `BenchmarkResult` includes `duration_limit` field
+- YAML config support (`duration`)
+- Works with all rate patterns, token bucket, adaptive concurrency
+- Dry-run shows duration mode info
+- Tests covering CLI parsing, dry-run output, YAML config, model serialization
