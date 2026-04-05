@@ -829,7 +829,7 @@
 - YAML config support (`consistency_check`)
 - Tests covering consistency measurement, deterministic vs random detection, and edge cases
 
-## M97: Request Latency Heatmap Data Export ✗
+## M97: Request Latency Heatmap Data Export ✅
 - `--heatmap-export <path>` CLI flag to export latency data in heatmap-ready format
 - Time bucketed (configurable bucket width, default 1s) with latency distribution per bucket
 - Output: JSON with `buckets[]` containing `{time_start, time_end, latency_histogram}` entries
@@ -837,3 +837,53 @@
 - YAML config support (`heatmap_export`, `heatmap_bucket_width`, `heatmap_bins`)
 - Useful for visualizing latency distribution changes over benchmark duration
 - Tests covering bucketing logic, histogram binning, export format, and edge cases
+
+## M98: Auto-Tuning Optimal Configuration ✗
+- `xpyd-bench autotune --base-url <url> --model <model>` CLI subcommand
+- Automatically find optimal concurrency and request rate for maximum throughput
+- Binary search strategy: increase concurrency until error rate exceeds threshold or throughput plateaus
+- Report: optimal concurrency, optimal request rate, max sustainable throughput, saturation point
+- `--autotune-target <metric>` to optimize for throughput (default), latency, or cost-efficiency
+- `--autotune-max-concurrency <N>` upper bound for search (default 128)
+- `--autotune-error-budget <float>` acceptable error rate during tuning (default 0.01)
+- JSON output with tuning trajectory and recommended configuration
+- `--generate-config <path>` writes optimized YAML config based on results
+- Tests covering binary search logic, convergence, config generation, and CLI integration
+
+## M99: Benchmark Reproducibility Score ✗
+- `--reproducibility-check N` flag to run benchmark N times and compute reproducibility score
+- Coefficient of variation (CV) across runs for key metrics
+- Score: 0-100 based on CV thresholds (CV<5% = excellent, CV<10% = good, etc.)
+- Identify unstable metrics and potential causes (system load, GC pauses, network jitter)
+- `BenchmarkResult` includes `reproducibility` section with per-metric CV and overall score
+- Recommendations for improving reproducibility (warmup, longer runs, pinned CPU, etc.)
+- YAML config support (`reproducibility_check`)
+- Tests covering score computation, threshold classification, and recommendations
+
+## M100: Request Payload Size Impact Analysis ✗
+- `xpyd-bench size-impact --base-url <url> --model <model>` CLI subcommand
+- Sweep across prompt sizes (e.g., 10, 100, 500, 1000, 2000, 4000 tokens) automatically
+- Measure TTFT, TPOT, throughput at each prompt size level
+- Detect linear vs sublinear vs superlinear scaling behavior
+- Report: size-latency curve, inflection points, recommended max prompt size for target latency
+- JSON output with per-size-level results
+- `--size-levels` to customize sweep sizes (comma-separated or range notation)
+- Tests covering sweep orchestration, scaling detection, and CLI integration
+
+## M101: Server Warm-up & Cold-Start Benchmarking ✗
+- `xpyd-bench cold-start --base-url <url> --model <model>` CLI subcommand
+- Measure first-request latency after configurable idle periods (1s, 5s, 30s, 60s, 300s)
+- Detect cold-start penalty: ratio of first-request latency to steady-state latency
+- `--idle-periods` to customize wait times (comma-separated seconds)
+- Report: cold-start penalty curve, recommended keep-alive interval
+- JSON output with per-period cold-start measurements
+- Tests covering cold-start detection, idle period timing, and CLI integration
+
+## M102: Benchmark Environment Comparison ✗
+- `xpyd-bench env-compare <result1.json> <result2.json>` CLI subcommand
+- Compare environment metadata (Python version, OS, CPU, etc.) between two runs
+- Highlight environment differences that may explain performance deltas
+- Cross-reference environment changes with metric regressions
+- Useful for debugging "it's slower on this machine" scenarios
+- JSON and human-readable output
+- Tests covering environment diffing, correlation analysis, and output formats
