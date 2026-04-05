@@ -728,6 +728,8 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
 
     # --- Warmup phase ---
     warmup_count = getattr(args, "warmup", 0) or 0
+    warmup_profile_enabled = getattr(args, "warmup_profile", False)
+    warmup_profile_result = None
     if warmup_count > 0:
         if not args.disable_tqdm:
             print(f"Warmup: sending {warmup_count} request(s)...")
@@ -735,13 +737,27 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             prompts * ((warmup_count // len(prompts)) + 1)
         )[:warmup_count]
         warmup_kw = _build_client_kwargs(args, headers=headers)
+        warmup_latencies: list[float] = []
+        warmup_start_time = time.perf_counter()
         async with httpx.AsyncClient(**warmup_kw) as warmup_client:
             for wi, wp in enumerate(warmup_prompts):
                 payload = _build_payload(args, wp, is_chat, is_embeddings)
                 wr = await _send_request(warmup_client, url, payload, is_streaming)
+                warmup_latencies.append(wr.latency * 1000.0)  # s → ms
                 if not args.disable_tqdm:
                     status = "ok" if wr.success else f"FAIL: {wr.error}"
                     print(f"  Warmup {wi + 1}/{warmup_count}: {status}")
+        warmup_total_s = time.perf_counter() - warmup_start_time
+        if warmup_profile_enabled and warmup_latencies:
+            from xpyd_bench.bench.warmup_profile import (
+                build_warmup_profile,
+                print_warmup_profile,
+            )
+            warmup_profile_result = build_warmup_profile(
+                warmup_latencies, warmup_total_s,
+            )
+            if not args.disable_tqdm:
+                print_warmup_profile(warmup_profile_result)
         if not args.disable_tqdm:
             print("Warmup complete. Starting benchmark...")
 
@@ -953,6 +969,10 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             f"{len(tasks) - len(results_list)} cancelled"
         )
 
+    # Attach warmup profile to result (M51)
+    if warmup_profile_result is not None:
+        result.warmup_profile = warmup_profile_result.to_dict()
+
     if reporter:
         reporter.print_summary_table(result)
     else:
@@ -1131,4 +1151,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["tags"] = r.tags
     if r.anomalies:
         d["anomalies"] = r.anomalies
+    if r.warmup_profile:
+        d["warmup_profile"] = r.warmup_profile
     return d

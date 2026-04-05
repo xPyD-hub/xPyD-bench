@@ -329,6 +329,13 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Number of warmup requests before benchmark "
         "(excluded from metrics). Default: 0.",
     )
+    parser.add_argument(
+        "--warmup-profile",
+        action="store_true",
+        default=False,
+        help="Enable warmup profiling: track per-request warmup latencies "
+        "and detect stabilization. Requires --warmup >= 2.",
+    )
 
     # Authentication
     parser.add_argument(
@@ -786,6 +793,8 @@ def _dry_run(args: argparse.Namespace, base_url: str) -> None:
     # Warmup
     warmup = getattr(args, "warmup", None) or 0
     print(f"  Warmup requests: {warmup}")
+    if getattr(args, "warmup_profile", False):
+        print("  Warmup profiling: enabled")
 
     # Timeout / retry
     print(f"  Timeout:         {args.timeout}s")

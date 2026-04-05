@@ -96,3 +96,6 @@ class BenchmarkResult:
 
     # Validation summary (M47)
     validation_summary: dict | None = None
+
+    # Warmup profiling results (M51)
+    warmup_profile: dict | None = None
