@@ -86,6 +86,20 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
             "benchmark stops at whichever limit is reached first."
         ),
     )
+    # Repeat mode (M49)
+    parser.add_argument(
+        "--repeat",
+        type=int,
+        default=1,
+        help="Number of times to repeat the benchmark (default: 1).",
+    )
+    parser.add_argument(
+        "--repeat-delay",
+        type=float,
+        default=0.0,
+        dest="repeat_delay",
+        help="Delay in seconds between repeated runs (default: 0).",
+    )
     parser.add_argument(
         "--request-rate",
         type=float,
@@ -578,6 +592,13 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Export metrics in Prometheus text exposition format.",
     )
     reporting.add_argument(
+        "--junit-xml",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Export results as JUnit XML for CI integration.",
+    )
+    reporting.add_argument(
         "--debug-log",
         type=str,
         default=None,
@@ -733,6 +754,12 @@ def _dry_run(args: argparse.Namespace, base_url: str) -> None:
     # Tokenizer
     tokenizer = getattr(args, "tokenizer", None)
     print(f"  Tokenizer:       {tokenizer or '(word-split)'}")
+
+    # Repeat mode (M49)
+    repeat_count = getattr(args, "repeat", 1)
+    repeat_delay = getattr(args, "repeat_delay", 0.0)
+    if repeat_count > 1:
+        print(f"  Repeat:          {repeat_count}x (delay: {repeat_delay}s)")
 
     # Connection pool (M28)
     http2 = getattr(args, "http2", False)
@@ -1133,9 +1160,49 @@ def bench_main(argv: list[str] | None = None) -> None:
     print(f"  Max concurrency:{args.max_concurrency or 'unlimited'}")
     print(f"  Input len:      {args.input_len}")
     print(f"  Output len:     {args.output_len}")
+    repeat_count = getattr(args, "repeat", 1)
+    repeat_delay = getattr(args, "repeat_delay", 0.0)
+    if repeat_count > 1:
+        print(f"  Repeat:         {repeat_count}x (delay: {repeat_delay}s)")
     print()
 
-    result, bench_result = asyncio.run(run_benchmark(args, base_url))
+    if repeat_count > 1:
+        from xpyd_bench.repeat import (
+            print_repeat_summary,
+            run_repeated_benchmark,
+        )
+
+        repeat_result = asyncio.run(run_repeated_benchmark(args, base_url))
+        print_repeat_summary(repeat_result)
+
+        # Use last run as the "primary" result for downstream exports
+        if repeat_result.per_run_results:
+            result = repeat_result.per_run_results[-1]
+            # Merge repeat summary into result
+            result.update(repeat_result.to_dict())
+        else:
+            print("No runs completed.")
+            return
+
+        # Reconstruct a minimal bench_result from the last run dict
+        from xpyd_bench.bench.models import BenchmarkResult
+
+        bench_result = BenchmarkResult(
+            base_url=base_url,
+            model=args.model or "",
+            num_prompts=args.num_prompts,
+            request_rate=args.request_rate,
+            completed=result.get("completed", 0),
+            failed=result.get("failed", 0),
+            request_throughput=result.get("request_throughput", 0.0),
+            output_throughput=result.get("output_throughput", 0.0),
+            total_token_throughput=result.get("total_token_throughput", 0.0),
+            mean_ttft_ms=result.get("mean_ttft_ms"),
+            mean_tpot_ms=result.get("mean_tpot_ms"),
+            total_duration_s=result.get("total_duration_s", 0.0),
+        )
+    else:
+        result, bench_result = asyncio.run(run_benchmark(args, base_url))
 
     # Inject tags (M36)
     parsed_tags = _parse_tags(args)
@@ -1198,6 +1265,13 @@ def bench_main(argv: list[str] | None = None) -> None:
         scenario = getattr(args, "scenario", None)
         p = export_prometheus(bench_result, args.prometheus_export, scenario)
         print(f"\nPrometheus metrics saved to {p}")
+
+    # JUnit XML export (M49)
+    if getattr(args, "junit_xml", None):
+        from xpyd_bench.junit_xml import write_junit_xml
+
+        write_junit_xml(bench_result, args.junit_xml)
+        print(f"\nJUnit XML report saved to {args.junit_xml}")
 
     # Debug log notification (M22)
     if getattr(args, "debug_log", None):

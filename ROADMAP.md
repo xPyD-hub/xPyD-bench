@@ -394,3 +394,24 @@
 - Human-readable summary with ✓/✗ indicators and latency
 - Exit code 0 for healthy, 1 for unhealthy (CI-friendly)
 - Tests covering healthy, unreachable, JSON output, API key, auto-detect scenarios
+
+## M49: JUnit XML Export for CI Integration
+- `--junit-xml <path>` CLI flag to export benchmark results as JUnit XML
+- Each request maps to a `<testcase>` element with latency as duration attribute
+- Failed requests produce `<failure>` elements with error messages
+- SLA violations (when `--sla` used) appear as separate testcases in a dedicated testsuite
+- Validation failures included as testcase failures
+- YAML config support (`junit_xml`)
+- Compatible with Jenkins, GitHub Actions, GitLab CI JUnit report parsers
+- Tests covering XML structure, request failures, SLA integration, and CLI integration
+
+## M49: Benchmark Repeat Mode ✅
+- `--repeat N` CLI flag to run the benchmark N times (default 1)
+- `--repeat-delay SECONDS` CLI flag for pause between runs (default 0)
+- YAML config support (`repeat`, `repeat_delay`)
+- After all runs, display per-run summary table and aggregated statistics
+- Reuses existing `aggregate_results()` for cross-run aggregation
+- Partial repeat: if interrupted (SIGINT), aggregate completed runs
+- JSON output includes `repeat_results` array and `repeat_summary` section
+- `--dry-run` shows repeat configuration
+- Tests covering repeat execution, delay, aggregation, CLI parsing, YAML config

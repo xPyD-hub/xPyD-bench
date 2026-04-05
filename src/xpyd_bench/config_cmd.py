@@ -98,6 +98,9 @@ _KNOWN_KEYS: set[str] = {
     "multi_turn",
     "max_turns",
     "turns",
+    "junit_xml",
+    "repeat",
+    "repeat_delay",
 }
 
 # Deprecated keys (currently none, placeholder for future use)
