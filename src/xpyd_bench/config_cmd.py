@@ -103,6 +103,8 @@ _KNOWN_KEYS: set[str] = {
     "repeat",
     "repeat_delay",
     "priority_levels",
+    "sse_metrics",
+    "sse_stall_threshold_ms",
 }
 
 # Deprecated keys (currently none, placeholder for future use)
