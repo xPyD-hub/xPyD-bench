@@ -153,3 +153,6 @@ class BenchmarkResult:
 
     # Workload distribution statistics (M78)
     workload_stats: dict | None = None
+
+    # Git repository metadata (M79)
+    git_info: dict[str, str] | None = None

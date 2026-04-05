@@ -655,3 +655,12 @@
 - Useful for understanding actual workload characteristics vs configured parameters
 - YAML config support (`workload_stats: true`)
 - Tests covering stats computation, CLI flag, YAML config, and edge cases
+
+## M79: Git Metadata Capture in Benchmark Results ✅
+- `collect_git_info()` utility in `src/xpyd_bench/bench/env.py`
+- Auto-detect git repository and capture: commit hash, short commit, branch, dirty status, remote URL
+- `BenchmarkResult` includes `git_info` dict field (auto-populated, None if not in git repo)
+- All saved JSON results include `git_info` section when available
+- `--dry-run` output shows git metadata section
+- Graceful fallback: returns None when git unavailable, not in repo, or command times out
+- Tests covering git info collection, fallback scenarios, serialization, and model field

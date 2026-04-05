@@ -16,7 +16,7 @@ import httpx
 import numpy as np
 
 from xpyd_bench.bench.debug_log import DebugLogger
-from xpyd_bench.bench.env import collect_env_info
+from xpyd_bench.bench.env import collect_env_info, collect_git_info
 from xpyd_bench.bench.models import BenchmarkResult, RequestResult
 
 # ---------------------------------------------------------------------------
@@ -759,6 +759,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         output_len=args.output_len,
         duration_limit=duration_limit,
         environment=collect_env_info(),
+        git_info=collect_git_info(),
     )
 
     # Timeout & retry settings
@@ -1531,6 +1532,7 @@ async def replay_trace(
         model=model,
         num_prompts=len(trace.entries),
         environment=collect_env_info(),
+        git_info=collect_git_info(),
     )
 
     replay_kwargs: dict[str, Any] = {
@@ -1613,6 +1615,8 @@ def _to_dict(r: BenchmarkResult) -> dict:
             d[key] = val  # None serializes as JSON null
     if r.environment:
         d["environment"] = r.environment
+    if r.git_info:
+        d["git_info"] = r.git_info
     if r.partial:
         d["partial"] = True
     if r.tags:
