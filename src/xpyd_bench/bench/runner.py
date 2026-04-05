@@ -1454,6 +1454,23 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     if warmup_profile_result is not None:
         result.warmup_profile = warmup_profile_result.to_dict()
 
+    # Warmup curve analysis (M90) — fit exponential decay to early request latencies
+    warmup_curve_enabled = bool(getattr(args, "warmup_curve", False))
+    if warmup_curve_enabled and results_list:
+        from xpyd_bench.bench.warmup_curve import (
+            build_warmup_curve,
+            print_warmup_curve,
+        )
+
+        # Use all completed request latencies sorted by send time.
+        _sorted_results = sorted(results_list, key=lambda r: r.start_time)
+        _curve_latencies = [r.latency_ms for r in _sorted_results if r.success]
+        if len(_curve_latencies) >= 3:
+            _curve_result = build_warmup_curve(_curve_latencies)
+            result.warmup_curve = _curve_result.to_dict()
+            if not args.disable_tqdm:
+                print_warmup_curve(_curve_result)
+
     # Attach noise injection stats (M60)
     if noise_injector:
         result.noise_injection = {
@@ -1787,6 +1804,8 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["ratelimit_summary"] = r.ratelimit_summary
     if r.warmup_profile:
         d["warmup_profile"] = r.warmup_profile
+    if r.warmup_curve:
+        d["warmup_curve"] = r.warmup_curve
     if r.priority_metrics:
         d["priority_metrics"] = r.priority_metrics
     if r.sse_metrics:

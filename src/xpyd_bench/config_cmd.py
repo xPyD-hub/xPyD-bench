@@ -140,6 +140,7 @@ _KNOWN_KEYS: set[str] = {
     "adaptive_timeout",
     "adaptive_timeout_multiplier",
     "speculative_metrics",
+    "warmup_curve",
 }
 
 # Deprecated keys (currently none, placeholder for future use)

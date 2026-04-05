@@ -497,6 +497,15 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Threshold in ms to flag a gap between chunks as a stall (default: 1000).",
     )
 
+    # Warmup curve analysis (M90)
+    parser.add_argument(
+        "--warmup-curve",
+        action="store_true",
+        default=False,
+        dest="warmup_curve",
+        help="Measure and visualize latency convergence with exponential decay fitting.",
+    )
+
     # Speculative decoding metrics (M88)
     parser.add_argument(
         "--speculative-metrics",
