@@ -909,9 +909,14 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
 
     async def _tracked_task(
         client: httpx.AsyncClient, prompt: str, priority: int | None = None,
+        scheduled_time: float | None = None,
     ) -> RequestResult:
         payload = _mk_payload(prompt)
+        # Record queue time: delay between scheduling and actual execution (M71)
+        _queue_start = time.perf_counter()
         r = await _task(client, prompt)
+        if scheduled_time is not None:
+            r.queue_time_ms = (_queue_start - scheduled_time) * 1000.0
         if debug_logger:
             p_bytes: int | None = None
             c_bytes: int | None = None
@@ -1007,7 +1012,12 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
                     break
                 if deadline and time.perf_counter() >= deadline:
                     break
-            task = asyncio.create_task(_tracked_task(client, prompt, priority=prompt_pri))
+            task = asyncio.create_task(
+                _tracked_task(
+                    client, prompt, priority=prompt_pri,
+                    scheduled_time=time.perf_counter(),
+                )
+            )
             tasks.append(task)
 
             if not reporter and not args.disable_tqdm and (i + 1) % 100 == 0:
@@ -1282,6 +1292,13 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     if timeout_summary:
         result.timeout_summary = timeout_summary
 
+    # Queue time summary (M71)
+    from xpyd_bench.bench.queue_time import compute_queue_time_summary
+
+    queue_time_summary = compute_queue_time_summary(result.requests)
+    if queue_time_summary:
+        result.queue_time_summary = queue_time_summary
+
     if reporter:
         reporter.print_summary_table(result)
     else:
@@ -1377,6 +1394,13 @@ def _print_summary(r: BenchmarkResult) -> None:
                 f"min={ts['min_latency_at_timeout_ms']:.2f} "
                 f"max={ts['max_latency_at_timeout_ms']:.2f} ms"
             )
+    if r.queue_time_summary:
+        qt = r.queue_time_summary
+        print(
+            f"\n  ⏳ Queue Time: mean={qt['mean_ms']:.2f} "
+            f"P50={qt['p50_ms']:.2f} P90={qt['p90_ms']:.2f} "
+            f"P99={qt['p99_ms']:.2f} ms ({qt['count']} requests)"
+        )
     print("=" * 60)
 
 
@@ -1520,4 +1544,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["noise_injection"] = r.noise_injection
     if r.timeout_summary:
         d["timeout_summary"] = r.timeout_summary
+    if r.queue_time_summary:
+        d["queue_time_summary"] = r.queue_time_summary
     return d

@@ -584,7 +584,7 @@
 - JSON output includes `timeout_summary` section
 - Tests covering timeout classification, summary aggregation, and edge cases
 
-## M71: Request Queuing Time Measurement ✗
+## M71: Request Queuing Time Measurement ✅
 - Measure client-side queuing time (time between request creation and actual send)
 - Per-request `queue_time` field in `RequestResult`
 - `BenchmarkResult` includes `queue_time_summary` with mean/P50/P99 stats
