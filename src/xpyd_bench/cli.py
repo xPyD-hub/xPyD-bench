@@ -471,6 +471,15 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Track request/response payload sizes and report bandwidth summary.",
     )
 
+    # Generation speed tracking (M68)
+    parser.add_argument(
+        "--measure-generation-speed",
+        action="store_true",
+        default=False,
+        dest="measure_generation_speed",
+        help="Compute per-request output token generation speed (tokens/s).",
+    )
+
     # Response validation (M47)
     parser.add_argument(
         "--validate-response",

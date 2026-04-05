@@ -744,6 +744,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     sse_stall_threshold = float(getattr(args, "sse_stall_threshold_ms", 1000.0) or 1000.0)
     track_ratelimits_enabled = bool(getattr(args, "track_ratelimits", False))
     track_payload_size_enabled = bool(getattr(args, "track_payload_size", False))
+    measure_generation_speed = bool(getattr(args, "measure_generation_speed", False))
 
     async def _do_send(
         client: httpx.AsyncClient, payload: dict[str, Any]
@@ -1152,6 +1153,22 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         resp_bytes = [r.response_bytes for r in result.requests]
         ps_summary = aggregate_payload_sizes(req_bytes, resp_bytes)
         result.payload_summary = ps_summary.to_dict()
+
+    # Generation speed calculation and aggregation (M68)
+    if measure_generation_speed and result.requests:
+        from xpyd_bench.bench.generation_speed import (
+            aggregate_generation_speeds,
+            compute_generation_tps,
+        )
+
+        for req in result.requests:
+            if req.success:
+                req.generation_tps = compute_generation_tps(
+                    req.completion_tokens, req.ttft_ms, req.latency_ms
+                )
+        tps_vals = [r.generation_tps for r in result.requests]
+        gs_summary = aggregate_generation_speeds(tps_vals)
+        result.generation_speed_summary = gs_summary.to_dict()
 
     # Response validation (M47)
     validators_specs = getattr(args, "validate_response", None) or []
