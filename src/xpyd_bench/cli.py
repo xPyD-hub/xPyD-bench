@@ -506,6 +506,15 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Measure and visualize latency convergence with exponential decay fitting.",
     )
 
+    # Token-level streaming latency CDF (M91)
+    parser.add_argument(
+        "--token-cdf",
+        action="store_true",
+        default=False,
+        dest="token_cdf",
+        help="Compute CDF of inter-token latencies with bimodal detection.",
+    )
+
     # Speculative decoding metrics (M88)
     parser.add_argument(
         "--speculative-metrics",

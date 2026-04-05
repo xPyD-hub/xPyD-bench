@@ -92,4 +92,5 @@
 | # | Date | Task | Result | Reviewer Comments |
 |---|------|------|--------|-------------------|
 | 1 | 2026-04-05 | M89: Multi-LoRA Endpoint Benchmarking | ✅ merged (PR #242) | Both approved — clean code, good test coverage |
-| 2 | 2026-04-06 | M90: Request Warm-up Curve Analysis | ⏳ in progress | — |
+| 2 | 2026-04-06 | M90: Request Warm-up Curve Analysis | ✅ merged | Both approved |
+| 3 | 2026-04-06 | M91: Token-Level Streaming Latency CDF | ⏳ in progress | — |

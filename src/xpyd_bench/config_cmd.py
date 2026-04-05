@@ -141,6 +141,7 @@ _KNOWN_KEYS: set[str] = {
     "adaptive_timeout_multiplier",
     "speculative_metrics",
     "warmup_curve",
+    "token_cdf",
 }
 
 # Deprecated keys (currently none, placeholder for future use)

@@ -1471,6 +1471,34 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             if not args.disable_tqdm:
                 print_warmup_curve(_curve_result)
 
+    # Token-level streaming latency CDF (M91)
+    token_cdf_enabled = bool(getattr(args, "token_cdf", False))
+    if token_cdf_enabled and results_list:
+        from xpyd_bench.bench.token_cdf import (
+            collect_itl_from_requests,
+            compute_token_cdf,
+        )
+
+        _itl_values = collect_itl_from_requests(results_list)
+        if _itl_values:
+            _cdf_result = compute_token_cdf(_itl_values)
+            result.token_latency_cdf = _cdf_result.to_dict()
+            if not args.disable_tqdm:
+                _n = _cdf_result.total_tokens
+                print(f"\n--- Token Latency CDF ({_n} inter-token intervals) ---")
+                for _pk, _pv in sorted(
+                    _cdf_result.percentiles.items(),
+                    key=lambda kv: float(kv[0][1:]),
+                ):
+                    print(f"  {_pk}: {_pv:.3f} ms")
+                if _cdf_result.is_bimodal:
+                    _bd = _cdf_result.bimodal_details
+                    print(
+                        f"  ⚠ Bimodal distribution detected: "
+                        f"modes at {_bd.get('mode1_ms', '?'):.1f} ms "
+                        f"and {_bd.get('mode2_ms', '?'):.1f} ms"
+                    )
+
     # Attach noise injection stats (M60)
     if noise_injector:
         result.noise_injection = {
@@ -1830,4 +1858,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["dedup_summary"] = r.dedup_summary
     if r.speculative_summary:
         d["speculative_summary"] = r.speculative_summary
+    if r.token_latency_cdf:
+        d["token_latency_cdf"] = r.token_latency_cdf
     return d
