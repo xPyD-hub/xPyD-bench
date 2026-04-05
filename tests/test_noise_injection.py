@@ -57,7 +57,7 @@ class TestNoiseInjector:
     def test_maybe_delay_zero(self):
         cfg = NoiseConfig(inject_delay_ms=0)
         inj = NoiseInjector(cfg)
-        result = asyncio.get_event_loop().run_until_complete(inj.maybe_delay())
+        result = asyncio.run(inj.maybe_delay())
         assert result == 0.0
         assert inj.stats.delays_injected == 0
 
@@ -65,7 +65,7 @@ class TestNoiseInjector:
         cfg = NoiseConfig(inject_delay_ms=10)
         inj = NoiseInjector(cfg)
         start = time.monotonic()
-        result = asyncio.get_event_loop().run_until_complete(inj.maybe_delay())
+        result = asyncio.run(inj.maybe_delay())
         elapsed = (time.monotonic() - start) * 1000
         assert result == 10.0
         assert elapsed >= 8  # allow some tolerance
@@ -304,7 +304,7 @@ class TestCombinedModes:
         inj = NoiseInjector(cfg)
 
         # Run delay
-        asyncio.get_event_loop().run_until_complete(inj.maybe_delay())
+        asyncio.run(inj.maybe_delay())
         assert inj.stats.delays_injected == 1
 
         # Error injection works
