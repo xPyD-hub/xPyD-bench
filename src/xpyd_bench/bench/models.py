@@ -31,6 +31,7 @@ class RequestResult:
     ratelimit_headers: dict | None = None  # Rate-limit headers (M66)
     request_bytes: int | None = None  # Request payload size in bytes (M67)
     response_bytes: int | None = None  # Response payload size in bytes (M67)
+    generation_tps: float | None = None  # Output tokens/s for this request (M68)
 
 
 @dataclass
@@ -129,3 +130,6 @@ class BenchmarkResult:
 
     # Payload size tracking summary (M67)
     payload_summary: dict | None = None
+
+    # Generation speed summary (M68)
+    generation_speed_summary: dict | None = None
