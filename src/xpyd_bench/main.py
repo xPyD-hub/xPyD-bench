@@ -87,6 +87,7 @@ _SUBCOMMANDS = {
     "model-compare",
     "stream-compare",
     "baseline",
+    "cache-test",
 }
 
 
@@ -192,6 +193,10 @@ def main() -> None:
         stream_compare_main(rest)
     elif subcmd == "baseline":
         _baseline_subcommand(rest)
+    elif subcmd == "cache-test":
+        from xpyd_bench.cache_test import cache_test_main
+
+        cache_test_main(rest)
 
 
 def _config_subcommand(argv: list[str]) -> None:
