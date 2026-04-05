@@ -89,6 +89,7 @@ _SUBCOMMANDS = {
     "baseline",
     "cache-test",
     "lora-compare",
+    "tag-compare",
 }
 
 
@@ -202,6 +203,10 @@ def main() -> None:
         from xpyd_bench.cli import lora_compare_main
 
         lora_compare_main(rest)
+    elif subcmd == "tag-compare":
+        from xpyd_bench.tag_compare import tag_compare_main
+
+        tag_compare_main(rest)
 
 
 def _config_subcommand(argv: list[str]) -> None:
