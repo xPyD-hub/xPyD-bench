@@ -168,15 +168,14 @@ def aggregate_main(argv: list[str] | None = None) -> None:
         default=2,
         help="Minimum number of runs required (default: 2)",
     )
+    parser.add_argument(
+        "--by-fingerprint",
+        action="store_true",
+        default=False,
+        help="Auto-group results by benchmark fingerprint before aggregating (M72).",
+    )
 
     args = parser.parse_args(argv)
-
-    if len(args.results) < args.min_runs:
-        print(
-            f"Error: need at least {args.min_runs} result files, got {len(args.results)}.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
 
     results: list[dict] = []
     for path_str in args.results:
@@ -187,11 +186,39 @@ def aggregate_main(argv: list[str] | None = None) -> None:
         with open(path) as f:
             results.append(json.load(f))
 
-    agg = aggregate_results(results)
-    _print_table(agg)
+    if args.by_fingerprint:
+        groups: dict[str, list[dict]] = {}
+        for r in results:
+            fp = r.get("fingerprint", "unknown")
+            groups.setdefault(fp, []).append(r)
 
-    if args.output:
-        out_path = Path(args.output)
-        with open(out_path, "w") as f:
-            json.dump(agg.to_dict(), f, indent=2)
-        print(f"Saved aggregated summary to {out_path}")
+        for fp, group in sorted(groups.items()):
+            short_fp = fp[:12] if fp != "unknown" else "unknown"
+            print(f"\n🔑 Fingerprint: {short_fp}... ({len(group)} run(s))")
+            if len(group) < args.min_runs:
+                print(f"  Skipped: need at least {args.min_runs} runs.")
+                continue
+            agg = aggregate_results(group)
+            _print_table(agg)
+
+            if args.output:
+                out_path = Path(args.output).with_suffix(f".{fp[:12]}.json")
+                with open(out_path, "w") as f:
+                    json.dump(agg.to_dict(), f, indent=2)
+                print(f"  Saved to {out_path}")
+    else:
+        if len(results) < args.min_runs:
+            print(
+                f"Error: need at least {args.min_runs} result files, got {len(results)}.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        agg = aggregate_results(results)
+        _print_table(agg)
+
+        if args.output:
+            out_path = Path(args.output)
+            with open(out_path, "w") as f:
+                json.dump(agg.to_dict(), f, indent=2)
+            print(f"Saved aggregated summary to {out_path}")

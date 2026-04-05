@@ -144,3 +144,6 @@ class BenchmarkResult:
 
     # Queue time summary (M71)
     queue_time_summary: dict | None = None
+
+    # Benchmark fingerprint (M72)
+    fingerprint: str | None = None

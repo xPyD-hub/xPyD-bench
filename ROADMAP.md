@@ -592,7 +592,7 @@
 - Useful for understanding rate limiter and concurrency bottlenecks
 - Tests covering queue time measurement, summary stats, and high-concurrency scenarios
 
-## M72: Benchmark Fingerprinting ✗
+## M72: Benchmark Fingerprinting ✅
 - Generate deterministic fingerprint hash from benchmark configuration (CLI args + config)
 - `BenchmarkResult` includes `fingerprint` field (SHA-256 of normalized config)
 - `xpyd-bench history` can group runs by fingerprint to track same-config performance over time
