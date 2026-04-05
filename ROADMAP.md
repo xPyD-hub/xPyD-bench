@@ -727,7 +727,7 @@
 - YAML config support (`deduplicate: true`)
 - Tests covering dedup detection, hash computation, and summary reporting
 
-## M86: Adaptive Timeout (Auto-Tuning) ✗
+## M86: Adaptive Timeout (Auto-Tuning) ✅
 - `--adaptive-timeout` CLI flag to auto-tune per-request timeout based on observed latencies
 - Initial timeout from `--timeout` value, then adjust based on rolling P99 + multiplier
 - `--adaptive-timeout-multiplier <float>` (default 3.0) controls safety margin

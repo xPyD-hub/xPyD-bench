@@ -790,23 +790,46 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     measure_generation_speed = bool(getattr(args, "measure_generation_speed", False))
     workload_stats_enabled = bool(getattr(args, "workload_stats", False))
 
+    # Adaptive timeout (M86)
+    adaptive_timeout_enabled = bool(getattr(args, "adaptive_timeout", False))
+    adaptive_timeout_obj = None
+    if adaptive_timeout_enabled:
+        from xpyd_bench.bench.adaptive_timeout import AdaptiveTimeout
+
+        at_multiplier = float(
+            getattr(args, "adaptive_timeout_multiplier", 3.0) or 3.0
+        )
+        adaptive_timeout_obj = AdaptiveTimeout(
+            initial_timeout=request_timeout,
+            multiplier=at_multiplier,
+        )
+
     async def _do_send(
         client: httpx.AsyncClient, payload: dict[str, Any]
     ) -> RequestResult:
         rid = _make_request_id()
+        # Determine effective timeout
+        eff_timeout = request_timeout
+        if adaptive_timeout_obj is not None:
+            eff_timeout = adaptive_timeout_obj.get_timeout()
+
         if use_plugin:
             r = await plugin.send_request(
                 client, url, payload,
                 is_streaming=is_streaming,
-                request_timeout=request_timeout,
+                request_timeout=eff_timeout,
                 retries=req_retries,
                 retry_delay=req_retry_delay,
             )
             r.request_id = rid
+            r.effective_timeout = eff_timeout
+            # Record latency for adaptation
+            if adaptive_timeout_obj is not None and r.success:
+                adaptive_timeout_obj.record(r.latency_ms / 1000.0)
             return r
-        return await _send_request(
+        r = await _send_request(
             client, url, payload, is_streaming,
-            request_timeout=request_timeout,
+            request_timeout=eff_timeout,
             retries=req_retries,
             retry_delay=req_retry_delay,
             compress=req_compress,
@@ -815,6 +838,11 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             track_ratelimits=track_ratelimits_enabled,
             track_payload_size=track_payload_size_enabled,
         )
+        r.effective_timeout = eff_timeout
+        # Record latency for adaptation
+        if adaptive_timeout_obj is not None and r.success:
+            adaptive_timeout_obj.record(r.latency_ms / 1000.0)
+        return r
 
     # Noise injection (M60)
     from xpyd_bench.noise import NoiseInjector, build_noise_config_from_args

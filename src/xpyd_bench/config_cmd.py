@@ -137,6 +137,8 @@ _KNOWN_KEYS: set[str] = {
     "confidence_intervals",
     "confidence_level",
     "deduplicate",
+    "adaptive_timeout",
+    "adaptive_timeout_multiplier",
 }
 
 # Deprecated keys (currently none, placeholder for future use)
