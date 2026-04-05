@@ -727,8 +727,35 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             sse_metrics=sse_metrics_enabled,
         )
 
+    # Noise injection (M60)
+    from xpyd_bench.noise import NoiseInjector, build_noise_config_from_args
+
+    noise_config = build_noise_config_from_args(args)
+    noise_injector = NoiseInjector(noise_config) if noise_config.enabled else None
+
     async def _task(client: httpx.AsyncClient, prompt: str) -> RequestResult:
         payload = _mk_payload(prompt)
+
+        # Noise injection: delay
+        if noise_injector:
+            await noise_injector.maybe_delay()
+
+        # Noise injection: client-side error abort
+        if noise_injector and noise_injector.should_inject_error():
+            noise_injector.stats.errors_injected += 1
+            noise_injector.stats.total_requests += 1
+            r = RequestResult()
+            r.start_time = time.perf_counter()
+            r.success = False
+            r.error = "noise-injection: client-side abort"
+            r.latency_ms = 0.0
+            return r
+
+        # Noise injection: payload corruption
+        if noise_injector:
+            payload, _corrupted = noise_injector.corrupt_payload(payload)
+            noise_injector.stats.total_requests += 1
+
         if adaptive_limiter:
             await adaptive_limiter.acquire()
             try:
@@ -1102,6 +1129,13 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     if warmup_profile_result is not None:
         result.warmup_profile = warmup_profile_result.to_dict()
 
+    # Attach noise injection stats (M60)
+    if noise_injector:
+        result.noise_injection = {
+            "config": noise_injector.config.to_dict(),
+            "stats": noise_injector.stats.to_dict(),
+        }
+
     # Structured output validation (M56)
     _tools_path = getattr(args, "tools", None)
     _response_format = getattr(args, "response_format", None)
@@ -1359,4 +1393,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["structured_output_metrics"] = r.structured_output_metrics
     if r.latency_breakdown:
         d["latency_breakdown"] = r.latency_breakdown
+    if r.noise_injection:
+        d["noise_injection"] = r.noise_injection
     return d

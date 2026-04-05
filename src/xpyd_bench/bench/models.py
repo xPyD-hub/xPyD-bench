@@ -117,3 +117,6 @@ class BenchmarkResult:
 
     # Network latency decomposition (M57)
     latency_breakdown: dict | None = None
+
+    # Noise injection stats (M60)
+    noise_injection: dict | None = None

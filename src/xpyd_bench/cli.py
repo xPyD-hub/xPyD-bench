@@ -770,6 +770,29 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Number of prompts per load shedding level (default: 50).",
     )
 
+    # Noise injection / Chaos testing (M60)
+    parser.add_argument(
+        "--inject-delay",
+        type=float,
+        default=0.0,
+        dest="inject_delay",
+        help="Artificial client-side delay in ms before each request (default: 0).",
+    )
+    parser.add_argument(
+        "--inject-error-rate",
+        type=float,
+        default=0.0,
+        dest="inject_error_rate",
+        help="Fraction of requests to abort client-side (0.0-1.0, default: 0).",
+    )
+    parser.add_argument(
+        "--inject-payload-corruption",
+        type=float,
+        default=0.0,
+        dest="inject_payload_corruption",
+        help="Fraction of request payloads to corrupt before sending (0.0-1.0, default: 0).",
+    )
+
 
 def _resolve_base_url(args: argparse.Namespace) -> str:
     """Resolve the base URL from --base-url or --host/--port."""

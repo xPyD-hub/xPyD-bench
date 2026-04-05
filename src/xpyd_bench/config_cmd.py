@@ -106,6 +106,9 @@ _KNOWN_KEYS: set[str] = {
     "sse_metrics",
     "sse_stall_threshold_ms",
     "latency_breakdown",
+    "inject_delay",
+    "inject_error_rate",
+    "inject_payload_corruption",
 }
 
 # Deprecated keys (currently none, placeholder for future use)
