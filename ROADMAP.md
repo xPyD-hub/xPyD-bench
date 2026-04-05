@@ -441,7 +441,7 @@
 - HTML report SSE timeline visualization
 - Tests covering SSE parsing, jitter calculation, and stall detection
 
-## M54: Benchmark Diff Report
+## M54: Benchmark Diff Report ✅
 - `xpyd-bench diff <result1.json> <result2.json> --html-diff <path>` subcommand
 - Visual side-by-side HTML diff with highlighted regressions/improvements
 - Metric sparklines showing distribution differences

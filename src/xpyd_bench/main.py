@@ -78,6 +78,7 @@ _SUBCOMMANDS = {
     "batch",
     "sweep",
     "healthcheck",
+    "diff",
 }
 
 
@@ -149,6 +150,10 @@ def main() -> None:
         from xpyd_bench.healthcheck import healthcheck_main
 
         healthcheck_main(rest)
+    elif subcmd == "diff":
+        from xpyd_bench.diff import diff_main
+
+        diff_main(rest)
 
 
 def _config_subcommand(argv: list[str]) -> None:
