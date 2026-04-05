@@ -190,6 +190,7 @@ async def _send_request(
     sse_metrics: bool = False,
     track_ratelimits: bool = False,
     track_payload_size: bool = False,
+    speculative_metrics: bool = False,
 ) -> RequestResult:
     """Send one request and collect metrics, with optional retry."""
     last_result = RequestResult()
@@ -217,6 +218,7 @@ async def _send_request(
                     sse_metrics=sse_metrics,
                     track_ratelimits=track_ratelimits,
                     track_payload_size=track_payload_size,
+                    speculative_metrics=speculative_metrics,
                 )
                 result.request_id = request_id
                 # Payload size tracking for streaming (M67)
@@ -300,6 +302,7 @@ async def _send_streaming(
     sse_metrics: bool = False,
     track_ratelimits: bool = False,
     track_payload_size: bool = False,
+    speculative_metrics: bool = False,
 ) -> RequestResult:
     """Send a streaming request, measure TTFT / ITL."""
     result = RequestResult()
@@ -311,6 +314,7 @@ async def _send_streaming(
     collected_text_parts: list[str] = []  # M47: collect response text for validation
     stream_usage: dict[str, Any] | None = None
     chunk_timing_list: list[Any] = []  # M53: per-chunk timing data
+    spec_event_list: list[Any] = []  # M88: speculative decoding events
     _stream_response_bytes = 0  # M67: track streamed response size
 
     try:
@@ -341,6 +345,15 @@ async def _send_streaming(
                 # Capture usage from final streaming chunk (stream_options.include_usage)
                 if "usage" in chunk and chunk["usage"] is not None:
                     stream_usage = chunk["usage"]
+
+                # M88: Parse speculative decoding data from chunk
+                if speculative_metrics:
+                    from xpyd_bench.bench.speculative import parse_spec_data_from_chunk
+
+                    spec_ev = parse_spec_data_from_chunk(chunk)
+                    if spec_ev is not None:
+                        spec_ev.timestamp = now - start
+                        spec_event_list.append(spec_ev)
 
                 # Check if this chunk has content
                 choices = chunk.get("choices", [])
@@ -405,6 +418,10 @@ async def _send_streaming(
     # M53: Store chunk timings if SSE metrics enabled
     if sse_metrics and chunk_timing_list:
         result.chunk_timings = chunk_timing_list
+
+    # M88: Store speculative decoding events
+    if speculative_metrics and spec_event_list:
+        result.spec_events = spec_event_list
 
     # M67: Store streamed response bytes
     if track_payload_size:
@@ -789,6 +806,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     track_payload_size_enabled = bool(getattr(args, "track_payload_size", False))
     measure_generation_speed = bool(getattr(args, "measure_generation_speed", False))
     workload_stats_enabled = bool(getattr(args, "workload_stats", False))
+    speculative_metrics_enabled = bool(getattr(args, "speculative_metrics", False))
 
     # Adaptive timeout (M86)
     adaptive_timeout_enabled = bool(getattr(args, "adaptive_timeout", False))
@@ -837,6 +855,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             sse_metrics=sse_metrics_enabled,
             track_ratelimits=track_ratelimits_enabled,
             track_payload_size=track_payload_size_enabled,
+            speculative_metrics=speculative_metrics_enabled,
         )
         r.effective_timeout = eff_timeout
         # Record latency for adaptation
@@ -1299,6 +1318,17 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         if per_request_sse:
             result.sse_metrics = compute_sse_aggregate(per_request_sse)
 
+    # Speculative decoding metrics aggregate (M88)
+    if speculative_metrics_enabled and result.requests:
+        from xpyd_bench.bench.speculative import analyze_spec_events, compute_speculative_aggregate
+
+        per_request_spec = []
+        for req in result.requests:
+            if req.spec_events:
+                per_request_spec.append(analyze_spec_events(req.spec_events))
+        if per_request_spec:
+            result.speculative_summary = compute_speculative_aggregate(per_request_spec)
+
     # Rate-limit header aggregation (M66)
     if track_ratelimits_enabled and result.requests:
         from xpyd_bench.bench.ratelimit import aggregate_ratelimit
@@ -1612,6 +1642,17 @@ def _print_summary(r: BenchmarkResult) -> None:
             label = label_map.get(prefix, prefix)
             parts_cp = [f"{k}={v:.2f}" for k, v in pcts.items()]
             print(f"      {label:5s}  {', '.join(parts_cp)} ms")
+    if r.speculative_summary:
+        sp = r.speculative_summary
+        n_with = sp.get("requests_with_spec_data", 0)
+        n_total = sp.get("total_requests", 0)
+        print(f"\n  🔮 Speculative Decoding: {n_with}/{n_total} requests with data")
+        if sp.get("overall_acceptance_rate") is not None:
+            print(f"      Acceptance rate: {sp['overall_acceptance_rate']:.2%}")
+        if sp.get("total_tokens_saved") is not None:
+            print(f"      Tokens saved: {sp['total_tokens_saved']}")
+        if sp.get("mean_draft_batch_size") is not None:
+            print(f"      Mean draft batch size: {sp['mean_draft_batch_size']:.1f}")
     print("=" * 60)
 
 
@@ -1768,4 +1809,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["confidence_intervals"] = r.confidence_intervals
     if r.dedup_summary:
         d["dedup_summary"] = r.dedup_summary
+    if r.speculative_summary:
+        d["speculative_summary"] = r.speculative_summary
     return d
