@@ -79,6 +79,7 @@ _SUBCOMMANDS = {
     "sweep",
     "healthcheck",
     "diff",
+    "archive",
 }
 
 
@@ -154,6 +155,10 @@ def main() -> None:
         from xpyd_bench.diff import diff_main
 
         diff_main(rest)
+    elif subcmd == "archive":
+        from xpyd_bench.archive import archive_main
+
+        archive_main(rest)
 
 
 def _config_subcommand(argv: list[str]) -> None:
