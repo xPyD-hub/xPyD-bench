@@ -608,7 +608,7 @@
 - YAML config support (`percentiles: [50, 90, 95, 99, 99.9]`)
 - Tests covering custom percentile computation, CLI parsing, YAML config, edge cases
 
-## M74: Benchmark Checkpointing & Resume ⬜
+## M74: Benchmark Checkpointing & Resume ✅
 - `--checkpoint-dir <path>` CLI flag to enable periodic checkpointing during benchmark
 - Save completed request results every N requests (default 50) to checkpoint file
 - `xpyd-bench resume --checkpoint <path>` to resume an interrupted benchmark from checkpoint
