@@ -419,6 +419,18 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Threshold in ms to flag a gap between chunks as a stall (default: 1000).",
     )
 
+    # Network latency decomposition (M57)
+    parser.add_argument(
+        "--latency-breakdown",
+        action="store_true",
+        default=False,
+        dest="latency_breakdown",
+        help=(
+            "Enable detailed network latency decomposition "
+            "(DNS, TCP connect, TLS, server processing)."
+        ),
+    )
+
     # Response validation (M47)
     parser.add_argument(
         "--validate-response",
