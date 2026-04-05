@@ -456,3 +456,43 @@
 - Report saturation point, degradation curve, and recovery behavior
 - JSON output with saturation analysis section
 - Tests covering load shedding detection, saturation point, and CLI integration
+
+## M56: Structured Output / Function Calling Benchmarking
+- `--tools <path>` CLI flag to load tool/function definitions (OpenAI function calling format)
+- `--response-format json_object` and `--response-format json_schema` support
+- Measure structured output overhead: latency delta vs unconstrained generation
+- Validate response conforms to provided JSON schema
+- Dummy server supports `tools`, `tool_choice`, and `response_format` parameters
+- Per-request tracking of tool call extraction success/failure
+- Summary metrics: schema conformance rate, structured output latency overhead
+- YAML config support (`tools`, `response_format`)
+- Tests covering function calling, JSON mode, schema validation, and dummy server
+
+## M57: Network Latency Decomposition
+- Measure and report DNS resolution, TCP connect, TLS handshake, and server processing times separately
+- `--latency-breakdown` flag to enable detailed network timing
+- Per-request breakdown in debug log and per-request export
+- Summary with mean/P50/P99 for each phase
+- HTML report includes latency waterfall chart
+- Tests covering timing decomposition and reporting
+
+## M58: Benchmark Result Archival & Cloud Storage
+- `--archive <backend>` flag to push results to S3, GCS, or local archive
+- Archive manifest with run metadata for querying historical results
+- `xpyd-bench archive list` and `xpyd-bench archive fetch <run-id>` subcommands
+- Plugin interface for custom storage backends
+- Tests covering archival workflow and retrieval
+
+## M59: Request Dependency Chains
+- Define request sequences where output of request N feeds into request N+1
+- `--chain <path>` JSONL file defining extraction rules between requests
+- Measure end-to-end chain latency and per-step contribution
+- Useful for benchmarking RAG pipelines and agent workflows
+- Tests covering chain execution, extraction, and metrics
+
+## M60: Noise Injection & Chaos Testing
+- `--inject-delay <ms>` to add artificial client-side delay (simulate slow networks)
+- `--inject-error-rate <float>` to randomly abort requests client-side
+- `--inject-payload-corruption <float>` to send malformed payloads
+- Measure server resilience and error handling under adverse conditions
+- Tests covering injection modes and metric impact

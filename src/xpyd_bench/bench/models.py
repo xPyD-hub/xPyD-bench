@@ -24,6 +24,9 @@ class RequestResult:
     validation_errors: list[str] = field(default_factory=list)
     priority: int | None = None
     chunk_timings: list | None = None  # SSE per-chunk timing data (M53)
+    tool_call_success: bool | None = None  # Structured output tool call success (M56)
+    tool_calls_found: int = 0  # Number of tool calls extracted (M56)
+    schema_valid: bool | None = None  # JSON schema conformance (M56)
 
 
 @dataclass
@@ -107,3 +110,6 @@ class BenchmarkResult:
 
     # SSE streaming metrics (M53)
     sse_metrics: dict | None = None
+
+    # Structured output metrics (M56)
+    structured_output_metrics: dict | None = None

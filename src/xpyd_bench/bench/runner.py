@@ -230,6 +230,11 @@ async def _send_request(
                         or (c.get("message") or {}).get("content")
                         or ""
                     )
+                    # Extract tool calls (M56)
+                    msg = c.get("message") or {}
+                    tc_list = msg.get("tool_calls", [])
+                    result.tool_calls_found = len(tc_list)
+                    result._response_body = body  # stash for structured output validation
                 # Non-streaming: TPOT cannot be accurately measured because
                 # latency includes prefill time. Leave as None for consistency
                 # with streaming TPOT which correctly excludes TTFT/prefill.
@@ -1046,6 +1051,58 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     if warmup_profile_result is not None:
         result.warmup_profile = warmup_profile_result.to_dict()
 
+    # Structured output validation (M56)
+    _tools_path = getattr(args, "tools", None)
+    _response_format = getattr(args, "response_format", None)
+    if _tools_path or _response_format:
+        from xpyd_bench.bench.structured_output import (
+            StructuredOutputResult,
+            aggregate_structured_output,
+            validate_json_response,
+            validate_tool_calls,
+        )
+
+        # Parse tools once
+        _tools_list = None
+        if _tools_path:
+            import json as _json
+            from pathlib import Path as _Path
+
+            tp = _Path(_tools_path)
+            if tp.is_file():
+                with open(tp) as f:
+                    _tools_list = _json.load(f)
+            else:
+                _tools_list = _json.loads(_tools_path)
+
+        # Parse response_format once
+        _rf_dict = None
+        if _response_format:
+            import json as _json
+
+            if isinstance(_response_format, str):
+                _rf_dict = _json.loads(_response_format)
+            else:
+                _rf_dict = _response_format
+
+        so_results: list[StructuredOutputResult] = []
+        for req in result.requests:
+            if not req.success:
+                continue
+            resp_body = getattr(req, "_response_body", None)
+            if _tools_list and resp_body:
+                so_r = validate_tool_calls(resp_body, _tools_list)
+                req.tool_call_success = so_r.success
+                req.tool_calls_found = so_r.tool_calls_found
+                so_results.append(so_r)
+            elif _rf_dict:
+                so_r = validate_json_response(req.response_text, _rf_dict)
+                req.schema_valid = so_r.json_schema_valid
+                so_results.append(so_r)
+        if so_results:
+            so_summary = aggregate_structured_output(so_results)
+            result.structured_output_metrics = so_summary.to_dict()
+
     if reporter:
         reporter.print_summary_table(result)
     else:
@@ -1097,6 +1154,19 @@ def _print_summary(r: BenchmarkResult) -> None:
         if vs["failed"] > 0:
             for err_type, cnt in vs["error_counts"].items():
                 print(f"      {err_type}: {cnt}")
+    if r.structured_output_metrics:
+        so = r.structured_output_metrics
+        if so.get("tool_call_requests", 0) > 0:
+            print(
+                f"\n  🔧 Tool Calls: {so['tool_call_successes']}/{so['tool_call_requests']} "
+                f"successful ({so['tool_call_success_rate']}%)"
+            )
+            print(f"      Total tool calls extracted: {so['total_tool_calls_extracted']}")
+        if so.get("schema_validations", 0) > 0:
+            print(
+                f"\n  📋 Schema Conformance: {so['schema_passes']}/{so['schema_validations']} "
+                f"passed ({so['schema_conformance_rate']}%)"
+            )
     print("=" * 60)
 
 
@@ -1230,4 +1300,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["priority_metrics"] = r.priority_metrics
     if r.sse_metrics:
         d["sse_metrics"] = r.sse_metrics
+    if r.structured_output_metrics:
+        d["structured_output_metrics"] = r.structured_output_metrics
     return d

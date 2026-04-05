@@ -496,6 +496,86 @@ async def _stream_completions(
 # ---------------------------------------------------------------------------
 
 
+def _build_tool_calls(
+    tools: list[dict],
+    tool_choice: str | dict | None = None,
+    parallel: bool | None = None,
+) -> list[dict]:
+    """Build synthetic tool call response from tool definitions."""
+    import uuid
+
+    selected_tools: list[dict] = []
+    if isinstance(tool_choice, dict):
+        # Specific function requested
+        fname = tool_choice.get("function", {}).get("name", "")
+        for t in tools:
+            if t.get("type") == "function" and t.get("function", {}).get("name") == fname:
+                selected_tools.append(t)
+                break
+        if not selected_tools and tools:
+            selected_tools.append(tools[0])
+    elif tool_choice == "required" or tool_choice == "auto" or tool_choice is None:
+        if parallel and len(tools) > 1:
+            selected_tools = tools[:2]  # Return up to 2 tool calls for parallel
+        else:
+            selected_tools = tools[:1]
+    # tool_choice == "none" should not reach here
+
+    result = []
+    for t in selected_tools:
+        func = t.get("function", {})
+        fname = func.get("name", "unknown")
+        params = func.get("parameters", {})
+        # Generate dummy arguments matching the schema
+        args = _generate_dummy_args(params)
+        result.append({
+            "id": f"call_{uuid.uuid4().hex[:24]}",
+            "type": "function",
+            "function": {
+                "name": fname,
+                "arguments": json.dumps(args),
+            },
+        })
+    return result
+
+
+def _generate_dummy_args(schema: dict) -> dict:
+    """Generate dummy arguments matching a JSON schema."""
+    if not schema or schema.get("type") != "object":
+        return {}
+    props = schema.get("properties", {})
+    result: dict = {}
+    for key, prop in props.items():
+        ptype = prop.get("type", "string")
+        if ptype == "string":
+            enum = prop.get("enum")
+            result[key] = enum[0] if enum else "dummy_value"
+        elif ptype == "integer":
+            result[key] = 42
+        elif ptype == "number":
+            result[key] = 3.14
+        elif ptype == "boolean":
+            result[key] = True
+        elif ptype == "array":
+            result[key] = []
+        elif ptype == "object":
+            result[key] = _generate_dummy_args(prop)
+    return result
+
+
+def _build_json_response(response_format: dict, max_tokens: int) -> str:
+    """Build a JSON response conforming to response_format spec."""
+    fmt_type = response_format.get("type")
+    if fmt_type == "json_schema":
+        schema_def = response_format.get("json_schema", {})
+        schema = schema_def.get("schema", {})
+        if schema:
+            data = _generate_dummy_args(schema) if schema.get("type") == "object" else {}
+            return json.dumps(data)
+    # json_object: return a simple JSON object
+    return json.dumps({"result": " ".join(["token"] * min(max_tokens, 5))})
+
+
 async def _handle_chat_completions(request: Request) -> JSONResponse | StreamingResponse:
     try:
         body = await _parse_json_body(request)
@@ -530,11 +610,11 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
     ignore_eos = body.get("ignore_eos", False)
     stream_options = body.get("stream_options") or {}
     include_usage = stream_options.get("include_usage", False)
-    # Chat-specific params (accepted but not simulated by dummy)
-    body.get("response_format")
-    body.get("tools")
-    body.get("tool_choice")
-    body.get("parallel_tool_calls")
+    # Chat-specific params
+    response_format = body.get("response_format")
+    tools = body.get("tools")
+    tool_choice = body.get("tool_choice")
+    parallel_tool_calls = body.get("parallel_tool_calls")
     max_completion_tokens = body.get("max_completion_tokens")
     body.get("service_tier")
     # Use max_completion_tokens as fallback for max_tokens if provided
@@ -563,24 +643,59 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
     total_ms = _config.prefill_ms + _config.decode_ms * max_tokens
     await asyncio.sleep(total_ms / 1000.0)
 
+    # Determine if we should generate tool calls
+    _generate_tool_calls = tools and tool_choice != "none"
+
     choices = []
     total_completion_tokens = 0
     for i in range(n):
         eos_idx = _eos_index(max_tokens, ignore_eos)
         actual_tokens = eos_idx if eos_idx is not None and eos_idx < max_tokens else max_tokens
-        generated_text = " ".join(["token"] * actual_tokens)
-        finish_reason = "stop" if (eos_idx is not None and eos_idx < max_tokens) else "length"
-        stopped, generated_text = _check_stop(generated_text, stop)
-        if stopped:
+
+        if _generate_tool_calls:
+            # Generate synthetic tool call response
+            tool_calls_out = _build_tool_calls(tools, tool_choice, parallel_tool_calls)
+            generated_text = None
+            finish_reason = "tool_calls"
+            # Estimate tokens from serialized tool calls
+            tc_json = json.dumps(tool_calls_out)
+            gen_token_count = max(1, len(tc_json.split()))
+            choice: dict = {
+                "index": i,
+                "message": {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": tool_calls_out,
+                },
+                "finish_reason": finish_reason,
+            }
+        elif response_format and response_format.get("type") in (
+            "json_object",
+            "json_schema",
+        ):
+            # Generate JSON-conforming response
+            generated_text = _build_json_response(response_format, actual_tokens)
             finish_reason = "stop"
+            gen_token_count = max(1, len(generated_text.split()))
+            choice = {
+                "index": i,
+                "message": {"role": "assistant", "content": generated_text},
+                "finish_reason": finish_reason,
+            }
+        else:
+            generated_text = " ".join(["token"] * actual_tokens)
+            finish_reason = "stop" if (eos_idx is not None and eos_idx < max_tokens) else "length"
+            stopped, generated_text = _check_stop(generated_text, stop)
+            if stopped:
+                finish_reason = "stop"
+            gen_token_count = len(generated_text.split()) if generated_text else 0
+            choice = {
+                "index": i,
+                "message": {"role": "assistant", "content": generated_text},
+                "finish_reason": finish_reason,
+            }
 
-        choice: dict = {
-            "index": i,
-            "message": {"role": "assistant", "content": generated_text},
-            "finish_reason": finish_reason,
-        }
-
-        if logprobs and top_logprobs is not None:
+        if logprobs and top_logprobs is not None and generated_text:
             tokens = generated_text.split(" ") if generated_text else []
             choice["logprobs"] = {
                 "content": [
@@ -588,7 +703,6 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
                 ],
             }
 
-        gen_token_count = len(generated_text.split()) if generated_text else 0
         total_completion_tokens += gen_token_count
         choices.append(choice)
 
