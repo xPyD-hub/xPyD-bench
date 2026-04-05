@@ -23,6 +23,7 @@ class RequestResult:
     response_text: str | None = None
     validation_errors: list[str] = field(default_factory=list)
     priority: int | None = None
+    chunk_timings: list | None = None  # SSE per-chunk timing data (M53)
 
 
 @dataclass
@@ -103,3 +104,6 @@ class BenchmarkResult:
 
     # Priority metrics breakdown (M52)
     priority_metrics: dict | None = None
+
+    # SSE streaming metrics (M53)
+    sse_metrics: dict | None = None

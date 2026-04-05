@@ -187,6 +187,7 @@ async def _send_request(
     retry_delay: float = 1.0,
     compress: bool = False,
     request_id: str | None = None,
+    sse_metrics: bool = False,
 ) -> RequestResult:
     """Send one request and collect metrics, with optional retry."""
     last_result = RequestResult()
@@ -205,6 +206,7 @@ async def _send_request(
                 result = await _send_streaming(
                     client, url, payload, start, request_timeout=request_timeout,
                     compress=compress, extra_headers=_extra_hdrs,
+                    sse_metrics=sse_metrics,
                 )
                 result.request_id = request_id
             else:
@@ -261,6 +263,7 @@ async def _send_streaming(
     request_timeout: float = 300.0,
     compress: bool = False,
     extra_headers: dict[str, str] | None = None,
+    sse_metrics: bool = False,
 ) -> RequestResult:
     """Send a streaming request, measure TTFT / ITL."""
     result = RequestResult()
@@ -271,6 +274,7 @@ async def _send_streaming(
     token_count = 0
     collected_text_parts: list[str] = []  # M47: collect response text for validation
     stream_usage: dict[str, Any] | None = None
+    chunk_timing_list: list[Any] = []  # M53: per-chunk timing data
 
     try:
         req_kw = _compressed_request_kwargs(payload, compress, extra_headers=extra_headers)
@@ -312,9 +316,21 @@ async def _send_streaming(
                 if first_token_time is None:
                     first_token_time = now
                     result.ttft_ms = (now - start) * 1000.0
+                    if sse_metrics:
+                        from xpyd_bench.bench.sse_metrics import ChunkTiming
+
+                        chunk_timing_list.append(
+                            ChunkTiming(timestamp=now - start, tokens=1, inter_token_ms=None)
+                        )
                 else:
                     itl = (now - last_token_time) * 1000.0
                     result.itl_ms.append(itl)
+                    if sse_metrics:
+                        from xpyd_bench.bench.sse_metrics import ChunkTiming
+
+                        chunk_timing_list.append(
+                            ChunkTiming(timestamp=now - start, tokens=1, inter_token_ms=itl)
+                        )
                 last_token_time = now
 
     except Exception as exc:  # noqa: BLE001
@@ -336,6 +352,10 @@ async def _send_streaming(
 
     # M47: Store collected response text for validation
     result.response_text = "".join(collected_text_parts)
+
+    # M53: Store chunk timings if SSE metrics enabled
+    if sse_metrics and chunk_timing_list:
+        result.chunk_timings = chunk_timing_list
 
     return result
 
@@ -674,6 +694,10 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         uid = uuid.uuid4().hex[:12]
         return f"{req_id_prefix}{uid}" if req_id_prefix else uid
 
+    # SSE metrics flag (M53)
+    sse_metrics_enabled = bool(getattr(args, "sse_metrics", False))
+    sse_stall_threshold = float(getattr(args, "sse_stall_threshold_ms", 1000.0) or 1000.0)
+
     async def _do_send(
         client: httpx.AsyncClient, payload: dict[str, Any]
     ) -> RequestResult:
@@ -695,6 +719,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             retry_delay=req_retry_delay,
             compress=req_compress,
             request_id=rid,
+            sse_metrics=sse_metrics_enabled,
         )
 
     async def _task(client: httpx.AsyncClient, prompt: str) -> RequestResult:
@@ -970,6 +995,19 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             result.requests, priority_levels,
         )
 
+    # SSE metrics aggregate (M53)
+    if sse_metrics_enabled and result.requests:
+        from xpyd_bench.bench.sse_metrics import analyze_chunk_timings, compute_sse_aggregate
+
+        per_request_sse = []
+        for req in result.requests:
+            if req.chunk_timings:
+                per_request_sse.append(
+                    analyze_chunk_timings(req.chunk_timings, stall_threshold_ms=sse_stall_threshold)
+                )
+        if per_request_sse:
+            result.sse_metrics = compute_sse_aggregate(per_request_sse)
+
     # Response validation (M47)
     validators_specs = getattr(args, "validate_response", None) or []
     if validators_specs:
@@ -1190,4 +1228,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["warmup_profile"] = r.warmup_profile
     if r.priority_metrics:
         d["priority_metrics"] = r.priority_metrics
+    if r.sse_metrics:
+        d["sse_metrics"] = r.sse_metrics
     return d

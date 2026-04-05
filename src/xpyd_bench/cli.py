@@ -403,6 +403,22 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         "Levels range from 0 (highest) to N-1 (lowest).",
     )
 
+    # SSE metrics (M53)
+    parser.add_argument(
+        "--sse-metrics",
+        action="store_true",
+        default=False,
+        dest="sse_metrics",
+        help="Enable detailed SSE (Server-Sent Events) streaming metrics analysis.",
+    )
+    parser.add_argument(
+        "--sse-stall-threshold-ms",
+        type=float,
+        default=1000.0,
+        dest="sse_stall_threshold_ms",
+        help="Threshold in ms to flag a gap between chunks as a stall (default: 1000).",
+    )
+
     # Response validation (M47)
     parser.add_argument(
         "--validate-response",
