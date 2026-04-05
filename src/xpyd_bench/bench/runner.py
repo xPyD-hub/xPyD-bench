@@ -1540,6 +1540,53 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
                 print(f"  Cost with cache:    ${_csav['cached_cost']:.4f}")
                 print(f"  Savings:            ${_csav['saved']:.4f}")
 
+    # Pacing accuracy report (M93)
+    if getattr(args, "pacing_report", False):
+        from xpyd_bench.bench.pacing import compute_pacing_report
+
+        _target_interval = None
+        _rr = getattr(args, "request_rate", None)
+        if _rr and _rr != float("inf") and _rr > 0:
+            _target_interval = 1.0 / _rr
+        _pr = compute_pacing_report(
+            result.requests, target_interval_s=_target_interval
+        )
+        if _pr:
+            result.pacing_report = _pr
+            if not getattr(args, "disable_tqdm", False):
+                ai = _pr["actual_interval_ms"]
+                print("\n--- Request Pacing Accuracy ---")
+                print(f"  Intervals: {_pr['num_intervals']}")
+                print(
+                    f"  Actual interval:"
+                    f" mean={ai['mean']:.1f}ms"
+                    f" P50={ai['p50']:.1f}ms"
+                    f" P99={ai['p99']:.1f}ms"
+                )
+                if "target_interval_ms" in _pr:
+                    ti = _pr["target_interval_ms"]
+                    pe = _pr["pacing_error_ms"]
+                    print(f"  Target interval: {ti:.1f}ms")
+                    print(
+                        f"  Pacing error:"
+                        f" mean={pe['mean']:.1f}ms"
+                        f" P50={pe['p50']:.1f}ms"
+                        f" P99={pe['p99']:.1f}ms"
+                    )
+                    acc = _pr["pacing_accuracy_pct"]
+                    print(f"  Pacing accuracy: {acc:.1f}%")
+                dr = _pr["drift"]
+                if dr["detected"]:
+                    sl = dr["slope_ms_per_request"]
+                    print(f"  ⚠ Drift detected: slope={sl:.4f} ms/req")
+                bu = _pr["bursts"]
+                if bu["count"] > 0:
+                    print(
+                        f"  ⚠ Bursts: {bu['count']} burst(s),"
+                        f" {bu['burst_intervals']} intervals"
+                        f" ({bu['burst_ratio']:.1%})"
+                    )
+
     # Structured output validation (M56)
     _tools_path = getattr(args, "tools", None)
     _response_format = getattr(args, "response_format", None)
@@ -1896,4 +1943,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["token_latency_cdf"] = r.token_latency_cdf
     if r.cache_savings:
         d["cache_savings"] = r.cache_savings
+    if r.pacing_report:
+        d["pacing_report"] = r.pacing_report
     return d

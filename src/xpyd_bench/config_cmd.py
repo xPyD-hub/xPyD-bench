@@ -144,6 +144,7 @@ _KNOWN_KEYS: set[str] = {
     "token_cdf",
     "analyze_cache_savings",
     "cache_pricing_ratio",
+    "pacing_report",
 }
 
 # Deprecated keys (currently none, placeholder for future use)
