@@ -802,7 +802,7 @@
 - YAML config support (`pacing_report: true`)
 - Tests covering pacing measurement, drift detection, and various rate patterns
 
-## M94: Model Output Quality Scoring ✗
+## M94: Model Output Quality Scoring ✅
 - `--quality-check <mode>` CLI flag for lightweight output quality assessment
 - Modes: `perplexity-proxy` (response length vs prompt complexity), `repetition` (n-gram repetition rate), `coherence` (sentence-level similarity)
 - Per-request quality scores in `RequestResult`
