@@ -85,4 +85,5 @@
 | 4 | 2026-04-06 | M92: Prompt Caching Cost Analysis | ✅ merged (PR #248) | Both approved |
 | 5 | 2026-04-06 | M93: Request Pacing Accuracy Report | ✅ merged (PR #250) | Both approved |
 | 6 | 2026-04-06 | M94: Model Output Quality Scoring | ✅ merged (PR #252) | Both approved |
-| 7 | 2026-04-06 | M95: Benchmark Result Diffing by Tag | ⏳ in progress | — |
+| 7 | 2026-04-06 | M95: Benchmark Result Diffing by Tag | ✅ merged (PR #254) | Both approved |
+| 8 | 2026-04-06 | M96: Endpoint Response Consistency Check | ⏳ in progress | — |

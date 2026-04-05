@@ -562,6 +562,19 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         ),
     )
 
+    # Endpoint response consistency check (M96)
+    parser.add_argument(
+        "--consistency-check",
+        type=int,
+        default=None,
+        dest="consistency_check",
+        metavar="N",
+        help=(
+            "Send the same prompt N times and measure response variance. "
+            "Detects non-deterministic behavior even with temperature=0."
+        ),
+    )
+
     # Network latency decomposition (M57)
     parser.add_argument(
         "--latency-breakdown",
