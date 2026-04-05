@@ -186,3 +186,6 @@ class BenchmarkResult:
 
     # Model output quality scoring (M94)
     quality_summary: dict | None = None
+
+    # Endpoint response consistency check (M96)
+    consistency_summary: dict | None = None

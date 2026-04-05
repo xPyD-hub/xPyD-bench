@@ -146,6 +146,7 @@ _KNOWN_KEYS: set[str] = {
     "cache_pricing_ratio",
     "pacing_report",
     "quality_check",
+    "consistency_check",
 }
 
 # Deprecated keys (currently none, placeholder for future use)

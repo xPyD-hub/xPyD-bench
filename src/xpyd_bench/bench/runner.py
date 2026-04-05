@@ -1614,6 +1614,31 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
                         f" stddev={_qs['stddev']:.4f}"
                     )
 
+    # Endpoint response consistency check (M96)
+    _consistency_n = getattr(args, "consistency_check", None) or 0
+    if _consistency_n and result.requests:
+        from xpyd_bench.bench.consistency import compute_consistency_summary
+
+        _csummary = compute_consistency_summary(result.requests)
+        if _csummary:
+            result.consistency_summary = _csummary
+            if not getattr(args, "disable_tqdm", False):
+                print("\n--- Consistency Check ---")
+                print(f"  Requests: {_csummary['num_requests']}")
+                print(f"  Unique responses: {_csummary['unique_responses']}")
+                det = "yes" if _csummary["is_deterministic"] else "no"
+                print(f"  Deterministic: {det}")
+                print(
+                    f"  Token divergence rate: "
+                    f"{_csummary['token_divergence_rate']:.4f}"
+                )
+                print(
+                    f"  Length CV: {_csummary['length_cv']:.4f}"
+                )
+                print(
+                    f"  Latency CV: {_csummary['latency_cv']:.4f}"
+                )
+
     # Structured output validation (M56)
     _tools_path = getattr(args, "tools", None)
     _response_format = getattr(args, "response_format", None)
@@ -1974,4 +1999,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["pacing_report"] = r.pacing_report
     if r.quality_summary:
         d["quality_summary"] = r.quality_summary
+    if r.consistency_summary:
+        d["consistency_summary"] = r.consistency_summary
     return d
