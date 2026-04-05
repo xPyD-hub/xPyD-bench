@@ -575,6 +575,38 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         ),
     )
 
+    # Heatmap data export (M97)
+    parser.add_argument(
+        "--heatmap-export",
+        type=str,
+        default=None,
+        dest="heatmap_export",
+        metavar="PATH",
+        help=(
+            "Export time-bucketed latency histogram data as JSON "
+            "for heatmap visualization."
+        ),
+    )
+    parser.add_argument(
+        "--heatmap-bucket-width",
+        type=float,
+        default=1.0,
+        dest="heatmap_bucket_width",
+        metavar="SECONDS",
+        help="Time bucket width in seconds for heatmap export (default: 1.0).",
+    )
+    parser.add_argument(
+        "--heatmap-bins",
+        type=str,
+        default=None,
+        dest="heatmap_bins",
+        metavar="EDGES",
+        help=(
+            "Comma-separated latency bin edges in ms for heatmap export "
+            "(default: 0,50,100,200,500,1000)."
+        ),
+    )
+
     # Network latency decomposition (M57)
     parser.add_argument(
         "--latency-breakdown",
@@ -1772,6 +1804,27 @@ def bench_main(argv: list[str] | None = None) -> None:
         heatmap_data = compute_heatmap(bench_result)
         print()
         print(render_terminal_heatmap(heatmap_data))
+
+    # Heatmap data export (M97)
+    if getattr(args, "heatmap_export", None):
+        from xpyd_bench.bench.heatmap_export import (
+            compute_heatmap_export,
+            export_heatmap_json,
+            parse_bin_edges,
+        )
+
+        bin_edges = None
+        if getattr(args, "heatmap_bins", None):
+            bin_edges = parse_bin_edges(args.heatmap_bins)
+        bucket_width = getattr(args, "heatmap_bucket_width", 1.0) or 1.0
+        hmap_data = compute_heatmap_export(
+            bench_result.requests,
+            bench_result.bench_start_time,
+            bucket_width_s=bucket_width,
+            bin_edges_ms=bin_edges,
+        )
+        p = export_heatmap_json(hmap_data, args.heatmap_export)
+        print(f"\nHeatmap data exported to {p}")
 
     # Auto-save to result-dir when set (M30)
     if args.result_dir and not args.save_result:
