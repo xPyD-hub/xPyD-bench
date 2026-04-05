@@ -1267,6 +1267,24 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         if ws:
             result.workload_stats = ws
 
+    # Rolling window metrics (M81)
+    rolling_enabled = bool(getattr(args, "rolling_metrics", False))
+    if rolling_enabled and result.requests:
+        from xpyd_bench.bench.rolling_metrics import compute_rolling_metrics
+
+        lats = [r.latency_ms for r in result.requests if r.success]
+        sts = [r.start_time for r in result.requests if r.success and r.start_time is not None]
+        if len(lats) == len(sts) and len(lats) >= 2:
+            rm = compute_rolling_metrics(
+                lats,
+                sts,
+                result.bench_start_time,
+                window_seconds=getattr(args, "rolling_window", 10.0),
+                step_seconds=getattr(args, "rolling_step", 5.0),
+            )
+            if rm:
+                result.rolling_metrics = rm
+
     # Response validation (M47)
     validators_specs = getattr(args, "validate_response", None) or []
     if validators_specs:

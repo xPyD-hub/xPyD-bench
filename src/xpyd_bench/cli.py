@@ -528,6 +528,29 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Compute and report prompt/output token length distributions.",
     )
 
+    # Rolling window metrics (M81)
+    parser.add_argument(
+        "--rolling-metrics",
+        action="store_true",
+        default=False,
+        dest="rolling_metrics",
+        help="Compute rolling-window latency percentiles over benchmark duration.",
+    )
+    parser.add_argument(
+        "--rolling-window",
+        type=float,
+        default=10.0,
+        dest="rolling_window",
+        help="Rolling window size in seconds (default: 10).",
+    )
+    parser.add_argument(
+        "--rolling-step",
+        type=float,
+        default=5.0,
+        dest="rolling_step",
+        help="Rolling window step size in seconds (default: 5).",
+    )
+
     # Response validation (M47)
     parser.add_argument(
         "--validate-response",

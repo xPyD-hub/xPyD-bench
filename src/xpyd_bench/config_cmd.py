@@ -126,6 +126,9 @@ _KNOWN_KEYS: set[str] = {
     "synthetic_image_size",
     "image_detail",
     "workload_stats",
+    "rolling_metrics",
+    "rolling_window",
+    "rolling_step",
     "extends",
 }
 

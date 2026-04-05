@@ -156,3 +156,6 @@ class BenchmarkResult:
 
     # Git repository metadata (M79)
     git_info: dict[str, str] | None = None
+
+    # Rolling window metrics (M81)
+    rolling_metrics: dict | None = None
