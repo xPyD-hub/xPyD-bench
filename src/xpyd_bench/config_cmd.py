@@ -111,6 +111,7 @@ _KNOWN_KEYS: set[str] = {
     "inject_payload_corruption",
     "webhook_url",
     "webhook_secret",
+    "otlp_endpoint",
 }
 
 # Deprecated keys (currently none, placeholder for future use)

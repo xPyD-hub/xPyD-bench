@@ -810,6 +810,15 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Secret for HMAC-SHA256 webhook signature (X-Webhook-Signature header).",
     )
 
+    # OTLP trace export (M62)
+    parser.add_argument(
+        "--otlp-endpoint",
+        type=str,
+        default=None,
+        dest="otlp_endpoint",
+        help="OTLP/HTTP endpoint URL to export request trace spans (e.g. http://localhost:4318).",
+    )
+
 
 def _resolve_base_url(args: argparse.Namespace) -> str:
     """Resolve the base URL from --base-url or --host/--port."""
@@ -1468,6 +1477,15 @@ def bench_main(argv: list[str] | None = None) -> None:
         deliveries = send_webhooks(webhook_urls, result, secret=webhook_secret)
         print()
         print(format_webhook_summary(deliveries))
+
+    # OTLP trace export (M62)
+    otlp_endpoint = getattr(args, "otlp_endpoint", None)
+    if otlp_endpoint:
+        from xpyd_bench.otlp import export_traces, format_otlp_summary
+
+        delivery = export_traces(otlp_endpoint, result)
+        print()
+        print(format_otlp_summary(delivery))
 
     # SLA validation (M20)
     sla_path = getattr(args, "sla", None)
