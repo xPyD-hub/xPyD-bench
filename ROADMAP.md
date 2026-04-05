@@ -415,3 +415,44 @@
 - JSON output includes `repeat_results` array and `repeat_summary` section
 - `--dry-run` shows repeat configuration
 - Tests covering repeat execution, delay, aggregation, CLI parsing, YAML config
+
+## M51: Model Warmup Profiling
+- `--warmup-profile` flag to measure and report warmup characteristics
+- Track latency curve during warmup phase (cold → steady state)
+- Detect warmup completion point automatically (latency stabilization)
+- Report warmup duration and cold-start penalty in JSON output
+- Separate warmup metrics section in HTML report
+- YAML config support (`warmup_profile: true`)
+- Tests covering warmup detection, profiling output, and edge cases
+
+## M52: Request Priority & Queuing
+- `--priority-levels N` CLI flag to simulate priority-based request scheduling
+- Priority field in JSONL dataset format (`"priority": 0-9`)
+- Metrics broken down by priority level (latency, throughput, error rate)
+- Priority-aware rate limiting: higher priority requests sent first
+- YAML config support (`priority_levels`)
+- Tests covering priority scheduling, per-priority metrics, and CLI integration
+
+## M53: Server-Sent Events (SSE) Metrics
+- Enhanced streaming metrics: inter-token latency distribution, token delivery jitter
+- `--sse-metrics` flag to enable detailed SSE event analysis
+- Per-chunk timing in debug log and per-request export
+- Stall detection: flag periods with no tokens for >Xms
+- HTML report SSE timeline visualization
+- Tests covering SSE parsing, jitter calculation, and stall detection
+
+## M54: Benchmark Diff Report
+- `xpyd-bench diff <result1.json> <result2.json> --html-diff <path>` subcommand
+- Visual side-by-side HTML diff with highlighted regressions/improvements
+- Metric sparklines showing distribution differences
+- Statistical significance testing (Mann-Whitney U) for metric comparisons
+- Markdown diff output for PR comments
+- Tests covering diff generation, significance testing, and output formats
+
+## M55: Load Shedding Simulation
+- `--load-shed-threshold <rps>` to simulate server-side load shedding
+- Gradually increase request rate until target rejects requests (429/503)
+- Find maximum sustainable throughput automatically
+- Report saturation point, degradation curve, and recovery behavior
+- JSON output with saturation analysis section
+- Tests covering load shedding detection, saturation point, and CLI integration
