@@ -718,6 +718,14 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Display a latency heatmap in the terminal after the benchmark.",
     )
 
+    # Note (M69)
+    parser.add_argument(
+        "--note",
+        type=str,
+        default=None,
+        help="Attach a human-readable note/description to this benchmark run",
+    )
+
     # Tags (M36)
     parser.add_argument(
         "--tag",
@@ -1423,6 +1431,12 @@ def bench_main(argv: list[str] | None = None) -> None:
     if parsed_tags:
         bench_result.tags = parsed_tags
         result["tags"] = parsed_tags
+
+    # Inject note (M69)
+    note = getattr(args, "note", None)
+    if note:
+        bench_result.note = note
+        result["note"] = note
 
     # Export reports (M6)
     if args.export_requests:

@@ -116,6 +116,7 @@ _KNOWN_KEYS: set[str] = {
     "track_ratelimits",
     "track_payload_size",
     "measure_generation_speed",
+    "note",
 }
 
 # Deprecated keys (currently none, placeholder for future use)
