@@ -574,3 +574,27 @@
 - YAML config support (`note: "description"`)
 - `note` added to known config keys for validation
 - Tests covering CLI parsing, JSON output, history display, YAML config
+
+## M70: Request Timeout Classification & Reporting ✗
+- Classify timed-out vs completed vs errored requests separately in metrics
+- `BenchmarkResult` includes `timeout_summary` with count, percentage, and latency-at-timeout stats
+- Terminal summary shows timeout breakdown when timeouts occur
+- Per-request `timeout_detected` boolean field in `RequestResult`
+- Timeout classification based on configured `--timeout` value
+- JSON output includes `timeout_summary` section
+- Tests covering timeout classification, summary aggregation, and edge cases
+
+## M71: Request Queuing Time Measurement ✗
+- Measure client-side queuing time (time between request creation and actual send)
+- Per-request `queue_time` field in `RequestResult`
+- `BenchmarkResult` includes `queue_time_summary` with mean/P50/P99 stats
+- Distinguishes scheduling delay from actual server processing
+- Useful for understanding rate limiter and concurrency bottlenecks
+- Tests covering queue time measurement, summary stats, and high-concurrency scenarios
+
+## M72: Benchmark Fingerprinting ✗
+- Generate deterministic fingerprint hash from benchmark configuration (CLI args + config)
+- `BenchmarkResult` includes `fingerprint` field (SHA-256 of normalized config)
+- `xpyd-bench history` can group runs by fingerprint to track same-config performance over time
+- `xpyd-bench aggregate --by-fingerprint` to auto-group results by config
+- Tests covering fingerprint determinism, config normalization, and grouping
