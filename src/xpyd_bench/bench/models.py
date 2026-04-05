@@ -33,6 +33,7 @@ class RequestResult:
     response_bytes: int | None = None  # Response payload size in bytes (M67)
     generation_tps: float | None = None  # Output tokens/s for this request (M68)
     timeout_detected: bool = False  # Whether request timed out (M70)
+    effective_timeout: float | None = None  # Actual timeout used (M86)
     queue_time_ms: float | None = None  # Client-side queuing time in ms (M71)
     response_hash: str | None = None  # SHA-256 hash of response text (M85)
 

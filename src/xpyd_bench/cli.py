@@ -623,6 +623,22 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Detect and report duplicate responses from the server.",
     )
 
+    # Adaptive timeout (M86)
+    parser.add_argument(
+        "--adaptive-timeout",
+        action="store_true",
+        default=False,
+        dest="adaptive_timeout",
+        help="Auto-tune per-request timeout based on observed latencies.",
+    )
+    parser.add_argument(
+        "--adaptive-timeout-multiplier",
+        type=float,
+        default=3.0,
+        dest="adaptive_timeout_multiplier",
+        help="Safety margin multiplier for adaptive timeout (default: 3.0).",
+    )
+
     # Custom headers
     parser.add_argument(
         "--header",
