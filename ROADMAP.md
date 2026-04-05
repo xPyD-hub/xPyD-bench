@@ -433,7 +433,7 @@
 - YAML config support (`priority_levels`)
 - Tests covering priority scheduling, per-priority metrics, and CLI integration
 
-## M53: Server-Sent Events (SSE) Metrics
+## M53: Server-Sent Events (SSE) Metrics ✅
 - Enhanced streaming metrics: inter-token latency distribution, token delivery jitter
 - `--sse-metrics` flag to enable detailed SSE event analysis
 - Per-chunk timing in debug log and per-request export
