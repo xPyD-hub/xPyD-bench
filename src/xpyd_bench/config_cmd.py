@@ -112,6 +112,7 @@ _KNOWN_KEYS: set[str] = {
     "webhook_url",
     "webhook_secret",
     "otlp_endpoint",
+    "on_complete",
 }
 
 # Deprecated keys (currently none, placeholder for future use)
