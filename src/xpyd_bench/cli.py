@@ -793,6 +793,23 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Fraction of request payloads to corrupt before sending (0.0-1.0, default: 0).",
     )
 
+    # Webhook notifications (M61)
+    parser.add_argument(
+        "--webhook-url",
+        type=str,
+        action="append",
+        default=None,
+        dest="webhook_url",
+        help="URL to POST benchmark results to (repeatable for multiple endpoints).",
+    )
+    parser.add_argument(
+        "--webhook-secret",
+        type=str,
+        default=None,
+        dest="webhook_secret",
+        help="Secret for HMAC-SHA256 webhook signature (X-Webhook-Signature header).",
+    )
+
 
 def _resolve_base_url(args: argparse.Namespace) -> str:
     """Resolve the base URL from --base-url or --host/--port."""
@@ -1441,6 +1458,16 @@ def bench_main(argv: list[str] | None = None) -> None:
         print()
         print(format_cost_summary(cost_est))
         result["cost"] = cost_to_dict(cost_est)
+
+    # Webhook notifications (M61)
+    webhook_urls = getattr(args, "webhook_url", None)
+    if webhook_urls:
+        from xpyd_bench.webhook import format_webhook_summary, send_webhooks
+
+        webhook_secret = getattr(args, "webhook_secret", None)
+        deliveries = send_webhooks(webhook_urls, result, secret=webhook_secret)
+        print()
+        print(format_webhook_summary(deliveries))
 
     # SLA validation (M20)
     sla_path = getattr(args, "sla", None)
