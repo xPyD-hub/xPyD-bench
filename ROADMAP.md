@@ -566,3 +566,11 @@
 - HTML report adds generation speed distribution chart
 - YAML config support (`measure_generation_speed: true`)
 - Tests covering speed calculation, summary aggregation, compare integration, and CLI flag
+
+## M69: Benchmark Metadata & Notes ✅
+- `--note "description"` CLI flag to attach a human-readable note to a benchmark run
+- Note stored in `BenchmarkResult.note` field and included in JSON output
+- `xpyd-bench history` displays the note column
+- YAML config support (`note: "description"`)
+- `note` added to known config keys for validation
+- Tests covering CLI parsing, JSON output, history display, YAML config
