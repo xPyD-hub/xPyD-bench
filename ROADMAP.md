@@ -539,7 +539,7 @@
 - CLI flags override YAML config
 - Tests covering all three verbosity levels, CLI flags, and YAML config
 
-## M66: Rate-Limit Header Tracking & Backpressure Reporting
+## M66: Rate-Limit Header Tracking & Backpressure Reporting ✅
 - `--track-ratelimits` CLI flag to parse `X-RateLimit-*` and standard `RateLimit-*` response headers
 - Track remaining quota, reset time, and limit values from each response
 - Per-request `ratelimit_headers` field in `RequestResult`
