@@ -80,6 +80,7 @@ _SUBCOMMANDS = {
     "healthcheck",
     "diff",
     "archive",
+    "chain",
 }
 
 
@@ -159,6 +160,10 @@ def main() -> None:
         from xpyd_bench.archive import archive_main
 
         archive_main(rest)
+    elif subcmd == "chain":
+        from xpyd_bench.chain import chain_main
+
+        chain_main(rest)
 
 
 def _config_subcommand(argv: list[str]) -> None:
