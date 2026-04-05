@@ -490,7 +490,7 @@
 - Useful for benchmarking RAG pipelines and agent workflows
 - Tests covering chain execution, extraction, and metrics
 
-## M60: Noise Injection & Chaos Testing
+## M60: Noise Injection & Chaos Testing ✅
 - `--inject-delay <ms>` to add artificial client-side delay (simulate slow networks)
 - `--inject-error-rate <float>` to randomly abort requests client-side
 - `--inject-payload-corruption <float>` to send malformed payloads
