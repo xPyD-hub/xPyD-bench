@@ -1,19 +1,19 @@
-# xPyD-bench 使用指南
+# xPyD-bench User Guide
 
 > Benchmarking tool for [xPyD-proxy](https://github.com/xPyD-hub/xPyD-proxy) — measure latency, throughput, and PD-disaggregated inference performance.
 
-## 安装
+## Installation
 
 ```bash
 pip install xpyd-bench
 
-# 可选依赖
-pip install xpyd-bench[tokenizer]   # tiktoken 精确 token 计数
-pip install xpyd-bench[http2]       # HTTP/2 支持
-pip install xpyd-bench[dev]         # 开发 & 测试
+# Optional dependencies
+pip install xpyd-bench[tokenizer]   # tiktoken for accurate token counting
+pip install xpyd-bench[http2]       # HTTP/2 support
+pip install xpyd-bench[dev]         # Development & testing
 ```
 
-从源码安装：
+Install from source:
 
 ```bash
 git clone https://github.com/xPyD-hub/xPyD-bench.git
@@ -21,66 +21,66 @@ cd xPyD-bench
 pip install -e ".[dev]"
 ```
 
-## 核心命令
+## Core Commands
 
 ### xpyd-bench
 
-主入口，运行 benchmark。
+Main entry point for running benchmarks.
 
 ```bash
 xpyd-bench [OPTIONS]
 ```
 
-### 主要参数
+### Main Parameters
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `--base-url` | `http://127.0.0.1:8000` | 目标服务地址 |
-| `--model` | *(自动检测)* | 模型名称，省略时从 server 获取 |
-| `--endpoint` | `/v1/completions` | API 端点路径 |
-| `--num-prompts` | `1000` | 总请求数 |
-| `--request-rate` | `inf` | 每秒请求数，`inf` 表示全部并发发送 |
-| `--max-concurrency` | *(无限制)* | 最大并发请求数 |
-| `--input-len` | `256` | 输入 prompt token 长度 |
-| `--output-len` | `128` | 最大输出 token 数 |
-| `--stream` / `--no-stream` | *(自动)* | 启用/禁用流式响应 |
-| `--duration` | *(无)* | 固定运行时长（秒），到时间自动停止 |
-| `--dataset-name` | `random` | 数据集类型：`random` / `synthetic` |
-| `--dataset-path` | *(无)* | 自定义数据集文件路径（.jsonl/.json/.csv） |
-| `--seed` | `0` | 随机种子 |
-| `--burstiness` | `1.0` | 突发系数（1.0 = Poisson 分布） |
-| `--repeat` | `1` | 重复运行次数 |
-| `--repeat-delay` | `0` | 重复运行间隔（秒） |
-| `--output` / `-o` | *(stdout)* | 结果输出文件路径 |
-| `--backend` | `openai` | 后端类型 |
-| `--backend-plugin` | *(无)* | 自定义后端插件模块路径 |
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--base-url` | `http://127.0.0.1:8000` | Target server URL |
+| `--model` | *(auto-detect)* | Model name; auto-fetched from server if omitted |
+| `--endpoint` | `/v1/completions` | API endpoint path |
+| `--num-prompts` | `1000` | Total number of requests |
+| `--request-rate` | `inf` | Requests per second; `inf` sends all concurrently |
+| `--max-concurrency` | *(unlimited)* | Maximum concurrent requests |
+| `--input-len` | `256` | Input prompt token length |
+| `--output-len` | `128` | Maximum output token count |
+| `--stream` / `--no-stream` | *(auto)* | Enable/disable streaming responses |
+| `--duration` | *(none)* | Fixed run duration (seconds); auto-stops when elapsed |
+| `--dataset-name` | `random` | Dataset type: `random` / `synthetic` |
+| `--dataset-path` | *(none)* | Custom dataset file path (.jsonl/.json/.csv) |
+| `--seed` | `0` | Random seed |
+| `--burstiness` | `1.0` | Burstiness factor (1.0 = Poisson distribution) |
+| `--repeat` | `1` | Number of repeat runs |
+| `--repeat-delay` | `0` | Delay between repeat runs (seconds) |
+| `--output` / `-o` | *(stdout)* | Output file path for results |
+| `--backend` | `openai` | Backend type |
+| `--backend-plugin` | *(none)* | Custom backend plugin module path |
 
-#### 采样参数
+#### Sampling Parameters
 
-| 参数 | 说明 |
-|------|------|
-| `--temperature` | 采样温度 |
+| Parameter | Description |
+|-----------|-------------|
+| `--temperature` | Sampling temperature |
 | `--top-p` | Nucleus sampling |
-| `--frequency-penalty` | 频率惩罚 |
-| `--presence-penalty` | 存在惩罚 |
-| `--stop` | 停止序列 |
+| `--frequency-penalty` | Frequency penalty |
+| `--presence-penalty` | Presence penalty |
+| `--stop` | Stop sequence |
 
-### 其他子命令
+### Other Subcommands
 
 ```bash
-xpyd-bench compare    # 对比多次 benchmark 结果
-xpyd-bench profile    # 性能剖析模式
-xpyd-bench replay     # 回放录制的请求
-xpyd-bench config-dump      # 导出当前配置
-xpyd-bench config-validate  # 验证配置文件
-xpyd-dummy             # 启动 dummy server 用于测试
+xpyd-bench compare    # Compare multiple benchmark results
+xpyd-bench profile    # Performance profiling mode
+xpyd-bench replay     # Replay recorded requests
+xpyd-bench config-dump      # Export current configuration
+xpyd-bench config-validate  # Validate configuration file
+xpyd-dummy             # Start dummy server for testing
 ```
 
-## 典型使用场景
+## Typical Use Cases
 
-### 1. 单机测试
+### 1. Single-Machine Test
 
-对一个本地运行的 vLLM / xPyD 实例跑 benchmark：
+Run a benchmark against a locally running vLLM / xPyD instance:
 
 ```bash
 xpyd-bench \
@@ -94,21 +94,21 @@ xpyd-bench \
   -o results.json
 ```
 
-### 2. PD 分离（Prefill-Decode Disaggregation）测试
+### 2. PD Disaggregation (Prefill-Decode Disaggregation) Test
 
-通过 xpyd-proxy 路由到独立的 prefill / decode 节点：
+Route through xpyd-proxy to separate prefill / decode nodes:
 
 ```bash
-# 1) 启动 prefill 节点 (xpyd-sim 或真实 vLLM)
+# 1) Start prefill node (xpyd-sim or real vLLM)
 xpyd-sim --role prefill --port 8100
 
-# 2) 启动 decode 节点
+# 2) Start decode node
 xpyd-sim --role decode --port 8200
 
-# 3) 启动 proxy
+# 3) Start proxy
 xpyd-proxy --prefill http://localhost:8100 --decode http://localhost:8200 --port 8080
 
-# 4) 跑 benchmark（对 proxy）
+# 4) Run benchmark (against proxy)
 xpyd-bench \
   --base-url http://localhost:8080 \
   --num-prompts 1000 \
@@ -117,12 +117,12 @@ xpyd-bench \
   -o pd_results.json
 ```
 
-### 3. 多模型对比
+### 3. Multi-Model Comparison
 
-使用内置的 multi-model comparison 模式：
+Use the built-in multi-model comparison mode:
 
 ```bash
-# 对比两个模型
+# Compare two models
 xpyd-bench \
   --base-url http://localhost:8000 \
   --model Qwen/Qwen2.5-7B \
@@ -135,13 +135,13 @@ xpyd-bench \
   --num-prompts 200 \
   -o model_b.json
 
-# 对比结果
+# Compare results
 xpyd-bench compare model_a.json model_b.json
 ```
 
-### 4. 持续时间模式
+### 4. Duration Mode
 
-不限请求数，跑固定时长：
+Run for a fixed duration without limiting request count:
 
 ```bash
 xpyd-bench \
@@ -151,51 +151,51 @@ xpyd-bench \
   --stream
 ```
 
-### 5. 使用 dummy server 快速验证
+### 5. Quick Validation with Dummy Server
 
-无需真实模型，启动模拟服务器：
+Start a mock server without a real model:
 
 ```bash
-# 终端 1：启动 dummy server
+# Terminal 1: Start dummy server
 xpyd-dummy --port 8000
 
-# 终端 2：跑 benchmark
+# Terminal 2: Run benchmark
 xpyd-bench --base-url http://localhost:8000 --num-prompts 100
 ```
 
-## 结果解读
+## Understanding Results
 
-### 核心指标
+### Core Metrics
 
-| 指标 | 含义 |
-|------|------|
-| **TTFT** (Time To First Token) | 从发送请求到收到第一个 token 的时间。反映 prefill 阶段延迟。 |
-| **TPOT** (Time Per Output Token) | 每个输出 token 的平均生成时间。反映 decode 阶段速度。 |
-| **TPS** (Tokens Per Second) | 每秒生成的 token 数（单请求 / 聚合）。 |
-| **Throughput** | 总吞吐量：请求数/秒（req/s）和 token 数/秒（tok/s）。 |
-| **Error Rate** | 失败请求占比。 |
+| Metric | Description |
+|--------|-------------|
+| **TTFT** (Time To First Token) | Time from sending a request to receiving the first token. Reflects prefill stage latency. |
+| **TPOT** (Time Per Output Token) | Average time to generate each output token. Reflects decode stage speed. |
+| **TPS** (Tokens Per Second) | Tokens generated per second (per-request / aggregate). |
+| **Throughput** | Total throughput: requests/sec (req/s) and tokens/sec (tok/s). |
+| **Error Rate** | Percentage of failed requests. |
 
-### 百分位指标
+### Percentile Metrics
 
-| 指标 | 含义 |
-|------|------|
-| **P50** | 中位数，50% 的请求低于此值 |
-| **P90** | 90% 的请求低于此值 |
-| **P99** | 99% 的请求低于此值，反映长尾延迟 |
-| **Mean** | 算术平均值 |
-| **Std** | 标准差，反映延迟稳定性 |
+| Metric | Description |
+|--------|-------------|
+| **P50** | Median — 50% of requests are below this value |
+| **P90** | 90% of requests are below this value |
+| **P99** | 99% of requests are below this value; reflects tail latency |
+| **Mean** | Arithmetic mean |
+| **Std** | Standard deviation; reflects latency stability |
 
-### 如何判断结果好坏
+### How to Evaluate Results
 
-- **TTFT < 200ms**：prefill 性能良好（7B 模型、512 token 输入）
-- **TPOT < 30ms**：decode 速度正常
-- **P99/P50 < 3x**：延迟分布健康，无严重长尾
-- **Error Rate = 0%**：服务稳定
-- **Throughput**：随并发增长应接近线性，达到饱和后趋于平稳
+- **TTFT < 200ms**: Good prefill performance (7B model, 512 token input)
+- **TPOT < 30ms**: Normal decode speed
+- **P99/P50 < 3x**: Healthy latency distribution with no severe tail latency
+- **Error Rate = 0%**: Stable service
+- **Throughput**: Should scale near-linearly with concurrency, plateauing at saturation
 
-### 结果文件
+### Result File
 
-输出 JSON 包含：
+Output JSON contains:
 
 ```json
 {
@@ -214,43 +214,43 @@ xpyd-bench --base-url http://localhost:8000 --num-prompts 100
 }
 ```
 
-## 与 xpyd-sim / xpyd-proxy 配合使用
+## Using with xpyd-sim / xpyd-proxy
 
-### 架构
+### Architecture
 
 ```
 Client (xpyd-bench)
         │
         ▼
-   xpyd-proxy (路由层)
+   xpyd-proxy (routing layer)
      ┌──┴──┐
      ▼     ▼
   Prefill  Decode
   (xpyd-sim / vLLM)
 ```
 
-### 完整示例
+### Full Example
 
-参见 [`scripts/run_benchmark.sh`](../scripts/run_benchmark.sh) 了解一键启动脚本。
+See [`scripts/run_benchmark.sh`](../scripts/run_benchmark.sh) for an all-in-one launch script.
 
 ```bash
-# 手动步骤
+# Manual steps
 pip install xpyd-sim xpyd-proxy xpyd-bench
 
-# 启动 sim 节点
+# Start sim nodes
 xpyd-sim --role prefill --port 8100 &
 xpyd-sim --role decode  --port 8200 &
 
-# 启动 proxy
+# Start proxy
 xpyd-proxy \
   --prefill http://localhost:8100 \
   --decode  http://localhost:8200 \
   --port 8080 &
 
-# 等待服务就绪
+# Wait for services to be ready
 sleep 3
 
-# 运行 benchmark
+# Run benchmark
 xpyd-bench \
   --base-url http://localhost:8080 \
   --num-prompts 500 \
@@ -264,16 +264,16 @@ xpyd-bench \
 echo "Results saved to benchmark_results.json"
 ```
 
-## 高级功能
+## Advanced Features
 
-- **Checkpoint & Resume** (`--checkpoint`)：长时间 benchmark 中断后可恢复
-- **Benchmark Fingerprint** (`--fingerprint`)：唯一标识 benchmark 配置，方便对比
-- **Configuration Inheritance** (`--extends`)：配置文件继承
-- **Rolling Window Metrics**：实时滚动窗口统计
-- **Baseline Registry**：注册基线结果，后续自动对比回归
-- **Speculative Decoding Metrics**：投机解码相关指标
-- **Prefix Caching Impact**：前缀缓存效果分析
-- **Adaptive Timeout**：根据观察到的延迟自动调整超时
-- **Multimodal Vision Benchmark**：支持 vision 模型测试
-- **SLA Validation**：定义 SLA 规则，自动判断是否达标
-- **Distributed Benchmark**：多节点协调分布式压测
+- **Checkpoint & Resume** (`--checkpoint`): Resume long-running benchmarks after interruption
+- **Benchmark Fingerprint** (`--fingerprint`): Uniquely identify benchmark configurations for easy comparison
+- **Configuration Inheritance** (`--extends`): Configuration file inheritance
+- **Rolling Window Metrics**: Real-time rolling window statistics
+- **Baseline Registry**: Register baseline results for automatic regression comparison
+- **Speculative Decoding Metrics**: Metrics related to speculative decoding
+- **Prefix Caching Impact**: Analyze prefix caching effectiveness
+- **Adaptive Timeout**: Automatically adjust timeout based on observed latency
+- **Multimodal Vision Benchmark**: Support for vision model testing
+- **SLA Validation**: Define SLA rules and automatically check compliance
+- **Distributed Benchmark**: Multi-node coordinated distributed load testing
