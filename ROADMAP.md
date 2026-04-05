@@ -512,7 +512,7 @@
 - YAML config support (`otlp_endpoint`)
 - Tests covering span generation and attribute correctness
 
-## M63: Benchmark Scheduling & Cron Integration
+## M63: Benchmark Scheduling & Cron Integration ✅
 - `xpyd-bench schedule --cron "0 */6 * * *" --config bench.yaml` to generate crontab entries
 - `--on-complete <command>` to run shell command after benchmark (e.g., notify, upload)
 - Schedule validation and human-readable next-run preview

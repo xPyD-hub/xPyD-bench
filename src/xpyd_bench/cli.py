@@ -819,6 +819,15 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="OTLP/HTTP endpoint URL to export request trace spans (e.g. http://localhost:4318).",
     )
 
+    # On-complete command (M63)
+    parser.add_argument(
+        "--on-complete",
+        type=str,
+        default=None,
+        dest="on_complete",
+        help="Shell command to run after benchmark completes (e.g. 'notify-send done').",
+    )
+
 
 def _resolve_base_url(args: argparse.Namespace) -> str:
     """Resolve the base URL from --base-url or --host/--port."""
@@ -1501,6 +1510,19 @@ def bench_main(argv: list[str] | None = None) -> None:
         print(format_sla_table(sla_report))
         if not sla_report.all_passed:
             raise SystemExit(1)
+
+    # On-complete command (M63)
+    on_complete = getattr(args, "on_complete", None)
+    if on_complete:
+        from xpyd_bench.schedule import run_on_complete
+
+        oc_result = run_on_complete(on_complete)
+        if oc_result.returncode == 0:
+            print(f"\nOn-complete command succeeded: {on_complete}")
+        else:
+            print(f"\nOn-complete command failed (exit {oc_result.returncode}): {on_complete}")
+            if oc_result.stderr:
+                print(f"  stderr: {oc_result.stderr.strip()}")
 
 
 def compare_main(argv: list[str] | None = None) -> None:
