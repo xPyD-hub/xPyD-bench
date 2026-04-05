@@ -453,6 +453,15 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         ),
     )
 
+    # Rate-limit header tracking (M66)
+    parser.add_argument(
+        "--track-ratelimits",
+        action="store_true",
+        default=False,
+        dest="track_ratelimits",
+        help="Track rate-limit response headers and report backpressure summary.",
+    )
+
     # Response validation (M47)
     parser.add_argument(
         "--validate-response",

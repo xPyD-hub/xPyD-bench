@@ -188,6 +188,7 @@ async def _send_request(
     compress: bool = False,
     request_id: str | None = None,
     sse_metrics: bool = False,
+    track_ratelimits: bool = False,
 ) -> RequestResult:
     """Send one request and collect metrics, with optional retry."""
     last_result = RequestResult()
@@ -207,6 +208,7 @@ async def _send_request(
                     client, url, payload, start, request_timeout=request_timeout,
                     compress=compress, extra_headers=_extra_hdrs,
                     sse_metrics=sse_metrics,
+                    track_ratelimits=track_ratelimits,
                 )
                 result.request_id = request_id
             else:
@@ -215,6 +217,13 @@ async def _send_request(
                 resp.raise_for_status()
                 end = time.perf_counter()
                 result.latency_ms = (end - start) * 1000.0
+
+                # Rate-limit header tracking (M66)
+                if track_ratelimits:
+                    from xpyd_bench.bench.ratelimit import parse_ratelimit_headers
+                    rl = parse_ratelimit_headers(resp.headers)
+                    if rl:
+                        result.ratelimit_headers = rl
 
                 body = resp.json()
                 usage = body.get("usage", {})
@@ -269,6 +278,7 @@ async def _send_streaming(
     compress: bool = False,
     extra_headers: dict[str, str] | None = None,
     sse_metrics: bool = False,
+    track_ratelimits: bool = False,
 ) -> RequestResult:
     """Send a streaming request, measure TTFT / ITL."""
     result = RequestResult()
@@ -285,6 +295,12 @@ async def _send_streaming(
         req_kw = _compressed_request_kwargs(payload, compress, extra_headers=extra_headers)
         async with client.stream("POST", url, **req_kw, timeout=request_timeout) as resp:
             resp.raise_for_status()
+            # Rate-limit header tracking (M66)
+            if track_ratelimits:
+                from xpyd_bench.bench.ratelimit import parse_ratelimit_headers
+                rl = parse_ratelimit_headers(resp.headers)
+                if rl:
+                    result.ratelimit_headers = rl
             async for line in resp.aiter_lines():
                 if not line.startswith("data: "):
                     continue
@@ -702,6 +718,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     # SSE metrics flag (M53)
     sse_metrics_enabled = bool(getattr(args, "sse_metrics", False))
     sse_stall_threshold = float(getattr(args, "sse_stall_threshold_ms", 1000.0) or 1000.0)
+    track_ratelimits_enabled = bool(getattr(args, "track_ratelimits", False))
 
     async def _do_send(
         client: httpx.AsyncClient, payload: dict[str, Any]
@@ -725,6 +742,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             compress=req_compress,
             request_id=rid,
             sse_metrics=sse_metrics_enabled,
+            track_ratelimits=track_ratelimits_enabled,
         )
 
     # Noise injection (M60)
@@ -1091,6 +1109,15 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         if per_request_sse:
             result.sse_metrics = compute_sse_aggregate(per_request_sse)
 
+    # Rate-limit header aggregation (M66)
+    if track_ratelimits_enabled and result.requests:
+        from xpyd_bench.bench.ratelimit import aggregate_ratelimit
+
+        rl_headers = [r.ratelimit_headers for r in result.requests]
+        error_msgs = [r.error for r in result.requests]
+        rl_summary = aggregate_ratelimit(rl_headers, error_msgs)
+        result.ratelimit_summary = rl_summary.to_dict()
+
     # Response validation (M47)
     validators_specs = getattr(args, "validate_response", None) or []
     if validators_specs:
@@ -1256,6 +1283,21 @@ def _print_summary(r: BenchmarkResult) -> None:
         from xpyd_bench.bench.latency_breakdown import print_breakdown_summary
 
         print_breakdown_summary(r.latency_breakdown)
+    if r.ratelimit_summary:
+        rl = r.ratelimit_summary
+        parts: list[str] = []
+        if rl.get("max_limit") is not None:
+            parts.append(f"limit={rl['max_limit']}")
+        if rl.get("min_remaining") is not None:
+            parts.append(f"min_remaining={rl['min_remaining']}")
+        if rl.get("min_remaining_tokens") is not None:
+            parts.append(f"min_remaining_tokens={rl['min_remaining_tokens']}")
+        if rl.get("throttle_count", 0) > 0:
+            parts.append(f"throttled={rl['throttle_count']}")
+        tracked = rl.get("tracked_responses", 0)
+        total = rl.get("total_responses", 0)
+        parts.append(f"tracked={tracked}/{total}")
+        print(f"\n  🚦 Rate-Limits: {', '.join(parts)}")
     print("=" * 60)
 
 
@@ -1383,6 +1425,8 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["tags"] = r.tags
     if r.anomalies:
         d["anomalies"] = r.anomalies
+    if r.ratelimit_summary:
+        d["ratelimit_summary"] = r.ratelimit_summary
     if r.warmup_profile:
         d["warmup_profile"] = r.warmup_profile
     if r.priority_metrics:

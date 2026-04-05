@@ -63,6 +63,12 @@ def dummy_main(argv: list[str] | None = None) -> None:
         default=None,
         help="Maximum requests per second before rejecting with 429 (default: unlimited).",
     )
+    parser.add_argument(
+        "--ratelimit-rpm",
+        type=int,
+        default=None,
+        help="Include rate-limit headers in responses with this RPM limit.",
+    )
     args = parser.parse_args(argv)
 
     import uvicorn
@@ -78,6 +84,7 @@ def dummy_main(argv: list[str] | None = None) -> None:
         require_api_key=args.require_api_key,
         embedding_dim=args.embedding_dim,
         max_rps=args.max_rps,
+        ratelimit_rpm=args.ratelimit_rpm,
     )
     app = create_app(config)
 

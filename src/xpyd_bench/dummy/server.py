@@ -37,6 +37,12 @@ class ServerConfig:
     require_api_key: str | None = None  # If set, require this API key for auth
     embedding_dim: int = 1536  # Dimensionality for embedding vectors
     max_rps: float | None = None  # If set, reject requests above this rate (429)
+    ratelimit_rpm: int | None = None  # If set, include rate-limit headers in responses
+
+
+# Rate-limit tracking state for dummy server
+_ratelimit_remaining: int = 0
+_ratelimit_window_start: float = 0.0
 
 
 # Global config — set before starting the server
@@ -47,6 +53,29 @@ def set_config(config: ServerConfig) -> None:
     """Set server configuration."""
     global _config  # noqa: PLW0603
     _config = config
+    if config.ratelimit_rpm is not None:
+        global _ratelimit_remaining, _ratelimit_window_start  # noqa: PLW0603
+        _ratelimit_remaining = config.ratelimit_rpm
+        _ratelimit_window_start = time.time()
+
+
+def _ratelimit_headers() -> dict[str, str]:
+    """Generate rate-limit response headers if ratelimit_rpm is configured."""
+    if _config.ratelimit_rpm is None:
+        return {}
+    global _ratelimit_remaining, _ratelimit_window_start  # noqa: PLW0603
+    now = time.time()
+    # Reset window every 60 seconds
+    if now - _ratelimit_window_start >= 60.0:
+        _ratelimit_remaining = _config.ratelimit_rpm
+        _ratelimit_window_start = now
+    _ratelimit_remaining = max(_ratelimit_remaining - 1, 0)
+    reset_at = int(_ratelimit_window_start + 60)
+    return {
+        "X-RateLimit-Limit": str(_config.ratelimit_rpm),
+        "X-RateLimit-Remaining": str(_ratelimit_remaining),
+        "X-RateLimit-Reset": str(reset_at),
+    }
 
 
 # Standard headers to exclude from echo
@@ -300,10 +329,11 @@ async def _handle_completions(request: Request) -> JSONResponse | StreamingRespo
                 seed=seed,
                 ignore_eos=ignore_eos,
             ),
-            media_type="text/event-stream", headers=_echo_headers_dict(request),
+            media_type="text/event-stream",
+            headers={**_echo_headers_dict(request), **_ratelimit_headers()},
         )
 
-    # Non-streaming: simulate full latency
+    # Non-streaming: simulate full latency (completions)
     total_ms = _config.prefill_ms + _config.decode_ms * max_tokens
     await asyncio.sleep(total_ms / 1000.0)
 
@@ -358,7 +388,9 @@ async def _handle_completions(request: Request) -> JSONResponse | StreamingRespo
     }
     if seed is not None:
         resp_body["system_fingerprint"] = f"fp_seed_{seed}"
-    return JSONResponse(resp_body, headers=_echo_headers_dict(request))
+    hdrs = _echo_headers_dict(request)
+    hdrs.update(_ratelimit_headers())
+    return JSONResponse(resp_body, headers=hdrs)
 
 
 async def _stream_completions(
@@ -636,7 +668,8 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
                 seed=seed,
                 ignore_eos=ignore_eos,
             ),
-            media_type="text/event-stream", headers=_echo_headers_dict(request),
+            media_type="text/event-stream",
+            headers={**_echo_headers_dict(request), **_ratelimit_headers()},
         )
 
     # Non-streaming
@@ -720,7 +753,9 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
     }
     if seed is not None:
         resp_body["system_fingerprint"] = f"fp_seed_{seed}"
-    return JSONResponse(resp_body, headers=_echo_headers_dict(request))
+    hdrs = _echo_headers_dict(request)
+    hdrs.update(_ratelimit_headers())
+    return JSONResponse(resp_body, headers=hdrs)
 
 
 async def _stream_chat_completions(

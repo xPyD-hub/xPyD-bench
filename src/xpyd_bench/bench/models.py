@@ -28,6 +28,7 @@ class RequestResult:
     tool_calls_found: int = 0  # Number of tool calls extracted (M56)
     schema_valid: bool | None = None  # JSON schema conformance (M56)
     latency_breakdown: dict | None = None  # Network latency decomposition (M57)
+    ratelimit_headers: dict | None = None  # Rate-limit headers (M66)
 
 
 @dataclass
@@ -120,3 +121,6 @@ class BenchmarkResult:
 
     # Noise injection stats (M60)
     noise_injection: dict | None = None
+
+    # Rate-limit tracking summary (M66)
+    ratelimit_summary: dict | None = None
