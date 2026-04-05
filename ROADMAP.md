@@ -763,7 +763,7 @@
 - JSON and terminal comparison output
 - Tests covering multi-adapter orchestration, interleave mode, and result comparison
 
-## M90: Request Warm-up Curve Analysis ✗
+## M90: Request Warm-up Curve Analysis ✅
 - `--warmup-curve` flag to measure and visualize latency stabilization over initial N requests
 - Fit exponential decay model to latency curve to estimate convergence point
 - Report: cold-start penalty (first request vs steady state), warmup convergence request count
