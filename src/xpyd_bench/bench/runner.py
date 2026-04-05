@@ -1587,6 +1587,33 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
                         f" ({bu['burst_ratio']:.1%})"
                     )
 
+    # Model output quality scoring (M94)
+    _quality_modes = getattr(args, "quality_check", None) or []
+    if _quality_modes and result.requests:
+        from xpyd_bench.bench.quality import (
+            compute_quality_summary,
+            compute_request_quality,
+        )
+
+        _all_qscores: list[dict[str, float]] = []
+        for _rq in result.requests:
+            if _rq.success:
+                qs = compute_request_quality(_rq, _quality_modes)
+                _rq.quality_scores = qs
+                _all_qscores.append(qs)
+        _qsummary = compute_quality_summary(_all_qscores, _quality_modes)
+        if _qsummary:
+            result.quality_summary = _qsummary
+            if not getattr(args, "disable_tqdm", False):
+                print("\n--- Output Quality Scores ---")
+                for _qm, _qs in _qsummary.items():
+                    print(
+                        f"  {_qm}: mean={_qs['mean']:.4f}"
+                        f" min={_qs['min']:.4f}"
+                        f" max={_qs['max']:.4f}"
+                        f" stddev={_qs['stddev']:.4f}"
+                    )
+
     # Structured output validation (M56)
     _tools_path = getattr(args, "tools", None)
     _response_format = getattr(args, "response_format", None)
@@ -1945,4 +1972,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["cache_savings"] = r.cache_savings
     if r.pacing_report:
         d["pacing_report"] = r.pacing_report
+    if r.quality_summary:
+        d["quality_summary"] = r.quality_summary
     return d
