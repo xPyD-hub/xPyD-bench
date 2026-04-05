@@ -416,7 +416,7 @@
 - `--dry-run` shows repeat configuration
 - Tests covering repeat execution, delay, aggregation, CLI parsing, YAML config
 
-## M51: Model Warmup Profiling
+## M51: Model Warmup Profiling ✅
 - `--warmup-profile` flag to measure and report warmup characteristics
 - Track latency curve during warmup phase (cold → steady state)
 - Detect warmup completion point automatically (latency stabilization)
