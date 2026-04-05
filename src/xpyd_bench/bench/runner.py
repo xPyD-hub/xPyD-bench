@@ -1333,6 +1333,19 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             if rm:
                 result.rolling_metrics = rm
 
+    # Confidence intervals (M84)
+    ci_enabled = bool(getattr(args, "confidence_intervals", False))
+    if ci_enabled and result.requests:
+        from xpyd_bench.bench.confidence_intervals import compute_confidence_intervals
+
+        ci_level = getattr(args, "confidence_level", 0.95)
+        ci_result = compute_confidence_intervals(
+            result.requests,
+            confidence_level=ci_level,
+        )
+        if ci_result and ci_result.get("metrics"):
+            result.confidence_intervals = ci_result
+
     # Response validation (M47)
     validators_specs = getattr(args, "validate_response", None) or []
     if validators_specs:
@@ -1711,4 +1724,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["fingerprint"] = r.fingerprint
     if r.custom_percentiles:
         d["custom_percentiles"] = r.custom_percentiles
+    if r.confidence_intervals:
+        d["confidence_intervals"] = r.confidence_intervals
     return d
