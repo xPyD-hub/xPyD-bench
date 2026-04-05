@@ -811,7 +811,7 @@
 - YAML config support (`quality_check`)
 - Tests covering all quality modes, scoring logic, and edge cases
 
-## M95: Benchmark Result Diffing by Tag ✗
+## M95: Benchmark Result Diffing by Tag ✅
 - `xpyd-bench tag-compare --result-dir <path> --group-by <tag-key>` CLI subcommand
 - Group historical results by tag value and compute cross-group comparison
 - Example: `--group-by gpu` compares A100 vs H100 vs L40S runs automatically
