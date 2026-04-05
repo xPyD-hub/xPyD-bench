@@ -745,7 +745,7 @@
 - JSON output with `cache_analysis` section
 - Tests covering shared prefix generation, metric comparison, and CLI integration
 
-## M88: Speculative Decoding Metrics ✗
+## M88: Speculative Decoding Metrics ✅
 - `--speculative-metrics` flag to track speculative decoding indicators in streaming responses
 - Parse draft/verify token patterns from SSE events when server exposes them
 - Track acceptance rate, draft batch sizes, speculation overhead
