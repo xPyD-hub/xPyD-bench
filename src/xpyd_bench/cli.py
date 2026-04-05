@@ -598,6 +598,31 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         ),
     )
 
+    # Confidence intervals (M84)
+    parser.add_argument(
+        "--confidence-intervals",
+        action="store_true",
+        default=False,
+        dest="confidence_intervals",
+        help="Compute 95%% bootstrap confidence intervals for summary metrics.",
+    )
+    parser.add_argument(
+        "--confidence-level",
+        type=float,
+        default=0.95,
+        dest="confidence_level",
+        help="Confidence level for CI computation (default: 0.95).",
+    )
+
+    # Request deduplication (M85)
+    parser.add_argument(
+        "--deduplicate",
+        action="store_true",
+        default=False,
+        dest="deduplicate",
+        help="Detect and report duplicate responses from the server.",
+    )
+
     # Custom headers
     parser.add_argument(
         "--header",

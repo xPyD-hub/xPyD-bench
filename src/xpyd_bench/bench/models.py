@@ -34,6 +34,7 @@ class RequestResult:
     generation_tps: float | None = None  # Output tokens/s for this request (M68)
     timeout_detected: bool = False  # Whether request timed out (M70)
     queue_time_ms: float | None = None  # Client-side queuing time in ms (M71)
+    response_hash: str | None = None  # SHA-256 hash of response text (M85)
 
 
 @dataclass
@@ -160,5 +161,11 @@ class BenchmarkResult:
     # Rolling window metrics (M81)
     rolling_metrics: dict | None = None
 
+    # Confidence intervals (M84)
+    confidence_intervals: dict | None = None
+
     # Abort reason when benchmark stopped early (M83)
     aborted_reason: str | None = None
+
+    # Deduplication summary (M85)
+    dedup_summary: dict | None = None

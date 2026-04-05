@@ -707,3 +707,31 @@
 - YAML config support (`max_error_rate`, `max_error_rate_window`)
 - CI-friendly: partial results still computed and reported
 - Tests covering abort trigger, aborted_reason content, no-abort when disabled
+
+## M84: Confidence Interval Reporting ✅
+- `--confidence-intervals` CLI flag to compute and display 95% confidence intervals for summary metrics
+- `--confidence-level <float>` to customize confidence level (default 0.95)
+- Bootstrap resampling (1000 iterations) for robust CI estimation
+- CI computed for: mean TTFT, mean TPOT, mean latency, throughput
+- `BenchmarkResult` includes `confidence_intervals` dict with lower/upper bounds per metric
+- Terminal summary shows CI ranges alongside point estimates when enabled
+- JSON output includes `confidence_intervals` section
+- YAML config support (`confidence_intervals: true`, `confidence_level: 0.95`)
+- Tests covering CI computation, custom confidence level, small sample warning, and CLI integration
+
+## M85: Request Deduplication & Idempotency Tracking ✅
+- `--deduplicate` CLI flag to detect and report duplicate responses from the server
+- Hash-based response deduplication using content fingerprints
+- Track unique vs duplicate response ratio in `BenchmarkResult`
+- Useful for detecting server-side caching effects on benchmark results
+- YAML config support (`deduplicate: true`)
+- Tests covering dedup detection, hash computation, and summary reporting
+
+## M86: Adaptive Timeout (Auto-Tuning) ✗
+- `--adaptive-timeout` CLI flag to auto-tune per-request timeout based on observed latencies
+- Initial timeout from `--timeout` value, then adjust based on rolling P99 + multiplier
+- `--adaptive-timeout-multiplier <float>` (default 3.0) controls safety margin
+- Prevents premature timeouts on slow but valid requests while catching truly hung ones
+- Per-request `effective_timeout` field in `RequestResult`
+- YAML config support (`adaptive_timeout`, `adaptive_timeout_multiplier`)
+- Tests covering timeout adaptation, multiplier config, and edge cases
