@@ -129,6 +129,8 @@ _KNOWN_KEYS: set[str] = {
     "rolling_metrics",
     "rolling_window",
     "rolling_step",
+    "compare_baseline",
+    "baseline_dir",
     "extends",
 }
 
