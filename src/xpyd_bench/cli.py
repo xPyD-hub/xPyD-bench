@@ -519,6 +519,15 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Compute per-request output token generation speed (tokens/s).",
     )
 
+    # Workload distribution statistics (M78)
+    parser.add_argument(
+        "--workload-stats",
+        action="store_true",
+        default=False,
+        dest="workload_stats",
+        help="Compute and report prompt/output token length distributions.",
+    )
+
     # Response validation (M47)
     parser.add_argument(
         "--validate-response",

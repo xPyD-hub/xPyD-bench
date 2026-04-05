@@ -787,6 +787,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
     track_ratelimits_enabled = bool(getattr(args, "track_ratelimits", False))
     track_payload_size_enabled = bool(getattr(args, "track_payload_size", False))
     measure_generation_speed = bool(getattr(args, "measure_generation_speed", False))
+    workload_stats_enabled = bool(getattr(args, "workload_stats", False))
 
     async def _do_send(
         client: httpx.AsyncClient, payload: dict[str, Any]
@@ -1254,6 +1255,16 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         tps_vals = [r.generation_tps for r in result.requests]
         gs_summary = aggregate_generation_speeds(tps_vals)
         result.generation_speed_summary = gs_summary.to_dict()
+
+    # Workload distribution statistics (M78)
+    if workload_stats_enabled and result.requests:
+        from xpyd_bench.bench.workload_stats import compute_workload_stats
+
+        prompt_lens = [r.prompt_tokens for r in result.requests if r.success]
+        completion_lens = [r.completion_tokens for r in result.requests if r.success]
+        ws = compute_workload_stats(prompt_lens, completion_lens)
+        if ws:
+            result.workload_stats = ws
 
     # Response validation (M47)
     validators_specs = getattr(args, "validate_response", None) or []
