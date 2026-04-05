@@ -548,3 +548,21 @@
 - Dummy server returns configurable rate-limit headers (`--ratelimit-rpm N`)
 - YAML config support (`track_ratelimits: true`)
 - Tests covering header parsing, summary aggregation, dummy server headers, and CLI integration
+
+## M67: Request/Response Payload Size Tracking ✅
+- `--track-payload-size` CLI flag to enable bandwidth tracking
+- Track `request_bytes` and `response_bytes` per request in `RequestResult`
+- Aggregate `payload_summary` in `BenchmarkResult` (total, mean, min, max, P50/P99)
+- Works with both streaming and non-streaming responses
+- YAML config support (`track_payload_size: true`)
+- Tests covering tracking logic, aggregation, CLI flag, and config key
+
+## M68: Output Token Speed Benchmarking & Comparison
+- `--measure-generation-speed` CLI flag to compute tokens-per-second for each request's output generation phase
+- Per-request `generation_tps` field in `RequestResult` (completion_tokens / generation_time)
+- `BenchmarkResult` includes `generation_speed_summary` with mean, P50, P90, P99 tokens/s
+- Terminal summary prints generation speed alongside existing throughput metrics
+- Compare tool includes generation speed in regression detection
+- HTML report adds generation speed distribution chart
+- YAML config support (`measure_generation_speed: true`)
+- Tests covering speed calculation, summary aggregation, compare integration, and CLI flag
