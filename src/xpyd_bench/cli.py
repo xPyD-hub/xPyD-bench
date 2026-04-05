@@ -515,6 +515,22 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Compute CDF of inter-token latencies with bimodal detection.",
     )
 
+    # Prompt caching cost analysis (M92)
+    parser.add_argument(
+        "--analyze-cache-savings",
+        action="store_true",
+        default=False,
+        dest="analyze_cache_savings",
+        help="Analyze dataset for shared prefix patterns and estimate caching cost savings.",
+    )
+    parser.add_argument(
+        "--cache-pricing-ratio",
+        type=float,
+        default=0.5,
+        dest="cache_pricing_ratio",
+        help="Ratio of cached token cost to uncached (default: 0.5).",
+    )
+
     # Speculative decoding metrics (M88)
     parser.add_argument(
         "--speculative-metrics",

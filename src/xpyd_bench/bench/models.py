@@ -176,3 +176,6 @@ class BenchmarkResult:
     speculative_summary: dict | None = None
     warmup_curve: dict | None = None
     token_latency_cdf: dict | None = None
+
+    # Prompt caching cost analysis (M92)
+    cache_savings: dict | None = None
