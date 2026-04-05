@@ -754,7 +754,7 @@
 - YAML config support (`speculative_metrics: true`)
 - Tests covering metric parsing, acceptance rate calculation, and fallback when no spec data
 
-## M89: Multi-LoRA Endpoint Benchmarking ✗
+## M89: Multi-LoRA Endpoint Benchmarking ✅
 - `xpyd-bench lora-compare --base-url <url> --models adapter1,adapter2,base` CLI subcommand
 - Benchmark same prompts against multiple LoRA adapters on same base model
 - Measure adapter switching overhead (requests alternating between adapters vs sequential)
