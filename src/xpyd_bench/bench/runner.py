@@ -440,7 +440,19 @@ def _build_payload(
         payload["model"] = args.model
 
     if is_chat:
-        payload["messages"] = [{"role": "user", "content": prompt}]
+        # Vision / multimodal support (M77)
+        vision_sources = getattr(args, "_vision_sources", None)
+        if vision_sources:
+            import random as _random
+
+            from xpyd_bench.bench.vision import build_vision_payload_content
+
+            image_detail = getattr(args, "image_detail", "auto") or "auto"
+            src = _random.choice(vision_sources)
+            content = build_vision_payload_content(prompt, src, image_detail)
+            payload["messages"] = [{"role": "user", "content": content}]
+        else:
+            payload["messages"] = [{"role": "user", "content": prompt}]
     else:
         payload["prompt"] = prompt
 
@@ -590,6 +602,28 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
 
         plugin = registry.get(backend_name)
         use_plugin = True
+
+    # Load vision image sources (M77)
+    _vision_image_url = getattr(args, "image_url", None)
+    _vision_image_dir = getattr(args, "image_dir", None)
+    _vision_synthetic = getattr(args, "synthetic_images", 0) or 0
+    if _vision_image_url or _vision_image_dir or _vision_synthetic > 0:
+        from xpyd_bench.bench.vision import load_image_sources
+
+        _synth_size = getattr(args, "synthetic_image_size", "64x64") or "64x64"
+        _sw, _sh = (int(x) for x in _synth_size.split("x"))
+        args._vision_sources = load_image_sources(
+            image_dir=_vision_image_dir,
+            image_url=_vision_image_url,
+            synthetic_images=_vision_synthetic,
+            synthetic_width=_sw,
+            synthetic_height=_sh,
+            seed=args.seed,
+        )
+        if not args._vision_sources:
+            raise SystemExit("ERROR: Vision mode enabled but no images found/generated.")
+    else:
+        args._vision_sources = None
 
     is_chat = "chat" in args.endpoint
     is_embeddings = "embeddings" in args.endpoint

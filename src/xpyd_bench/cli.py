@@ -406,6 +406,45 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Enable gzip compression of request bodies (Content-Encoding: gzip).",
     )
 
+    # Multimodal / Vision (M77)
+    vision_group = parser.add_argument_group("multimodal / vision (M77)")
+    vision_group.add_argument(
+        "--image-url",
+        type=str,
+        default=None,
+        dest="image_url",
+        help="HTTP(S) URL of an image to include in every chat prompt.",
+    )
+    vision_group.add_argument(
+        "--image-dir",
+        type=str,
+        default=None,
+        dest="image_dir",
+        help="Directory of image files to randomly sample from for each prompt.",
+    )
+    vision_group.add_argument(
+        "--synthetic-images",
+        type=int,
+        default=0,
+        dest="synthetic_images",
+        help="Number of synthetic images to generate for vision benchmarking.",
+    )
+    vision_group.add_argument(
+        "--synthetic-image-size",
+        type=str,
+        default="64x64",
+        dest="synthetic_image_size",
+        help="Synthetic image dimensions as WxH (default: 64x64).",
+    )
+    vision_group.add_argument(
+        "--image-detail",
+        type=str,
+        default="auto",
+        dest="image_detail",
+        choices=["auto", "low", "high"],
+        help="Image detail level for vision requests (default: auto).",
+    )
+
     # Anomaly detection (M43)
     parser.add_argument(
         "--anomaly-threshold",

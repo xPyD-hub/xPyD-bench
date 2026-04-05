@@ -633,3 +633,14 @@
 - Identify when streaming is beneficial vs detrimental
 - JSON and terminal summary output
 - Tests covering dual-mode execution, overhead calculation, and CLI integration
+
+## M77: Multimodal (Vision) Benchmarking ✅
+- `--image-url <url>` CLI flag to include an HTTP image in every chat prompt
+- `--image-dir <path>` to randomly sample images from a directory per request
+- `--synthetic-images N` to generate N synthetic PNG images for benchmarking
+- `--synthetic-image-size WxH` for synthetic image dimensions (default 64x64)
+- `--image-detail auto|low|high` to control vision detail level
+- Multimodal content array in chat messages (OpenAI vision API format)
+- Dummy server handles multimodal content in token estimation
+- YAML config support (`image_url`, `image_dir`, `synthetic_images`, `synthetic_image_size`, `image_detail`)
+- Tests covering image generation, content building, CLI parsing, payload construction, and config keys
