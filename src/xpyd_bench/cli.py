@@ -728,6 +728,36 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Number of turns for synthetic multi-turn generation (default: 5).",
     )
 
+    # Load shedding simulation (M55)
+    parser.add_argument(
+        "--load-shed-threshold",
+        type=float,
+        default=None,
+        dest="load_shed_threshold",
+        help="Starting RPS for load shedding simulation. Ramps up until server rejects.",
+    )
+    parser.add_argument(
+        "--load-shed-step",
+        type=float,
+        default=0.0,
+        dest="load_shed_step",
+        help="Additive RPS step for load shedding ramp (0 = use multiplier, default: 0).",
+    )
+    parser.add_argument(
+        "--load-shed-multiplier",
+        type=float,
+        default=1.5,
+        dest="load_shed_multiplier",
+        help="Multiplicative RPS ramp factor for load shedding (default: 1.5).",
+    )
+    parser.add_argument(
+        "--load-shed-prompts",
+        type=int,
+        default=50,
+        dest="load_shed_prompts",
+        help="Number of prompts per load shedding level (default: 50).",
+    )
+
 
 def _resolve_base_url(args: argparse.Namespace) -> str:
     """Resolve the base URL from --base-url or --host/--port."""
@@ -1086,6 +1116,36 @@ def bench_main(argv: list[str] | None = None) -> None:
     # Dry run: validate config and dataset, print plan, exit
     if getattr(args, "dry_run", False):
         _dry_run(args, base_url)
+        return
+
+    # Load shedding simulation (M55)
+    load_shed_rps = getattr(args, "load_shed_threshold", None)
+    if load_shed_rps is not None:
+        from xpyd_bench.load_shed import (
+            format_load_shed_table,
+            run_load_shed,
+        )
+
+        print(f"xpyd-bench v{__version__} (load shedding mode)")
+        print(f"  Base URL:        {base_url}")
+        print(f"  Starting RPS:    {load_shed_rps}")
+        print()
+
+        analysis = asyncio.run(
+            run_load_shed(
+                args,
+                base_url,
+                starting_rps=load_shed_rps,
+                ramp_step=getattr(args, "load_shed_step", 0.0),
+                ramp_multiplier=getattr(args, "load_shed_multiplier", 1.5),
+                prompts_per_level=getattr(args, "load_shed_prompts", 50),
+            )
+        )
+        print(format_load_shed_table(analysis))
+
+        result = {"saturation_analysis": analysis.to_dict()}
+        if getattr(args, "save_result", None):
+            _save_result(args, result)
         return
 
     # Multi-turn conversation mode (M45)

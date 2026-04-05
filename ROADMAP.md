@@ -449,7 +449,7 @@
 - Markdown diff output for PR comments
 - Tests covering diff generation, significance testing, and output formats
 
-## M55: Load Shedding Simulation
+## M55: Load Shedding Simulation ✅
 - `--load-shed-threshold <rps>` to simulate server-side load shedding
 - Gradually increase request rate until target rejects requests (429/503)
 - Find maximum sustainable throughput automatically
