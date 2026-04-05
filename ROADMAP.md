@@ -517,3 +517,14 @@
 - `--on-complete <command>` to run shell command after benchmark (e.g., notify, upload)
 - Schedule validation and human-readable next-run preview
 - Tests covering cron generation and on-complete execution
+
+## M64: Endpoint Capability Discovery
+- `xpyd-bench discover --base-url <url>` probes endpoint to auto-detect capabilities
+- Detect: /v1/completions, /v1/chat/completions, /v1/embeddings, /v1/batch, streaming, function calling
+- Auto-discover available models via /v1/models
+- `--api-key` for authenticated endpoints (OPENAI_API_KEY env fallback)
+- `--timeout` for probe timeout configuration
+- `--json` for machine-readable JSON output
+- `--generate-config <path>` writes recommended YAML config based on discovered capabilities
+- Human-readable summary with ✓/✗ indicators
+- Tests covering discovery logic, JSON output, config generation, CLI integration
