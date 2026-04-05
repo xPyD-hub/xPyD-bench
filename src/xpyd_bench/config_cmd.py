@@ -120,6 +120,11 @@ _KNOWN_KEYS: set[str] = {
     "percentiles",
     "checkpoint_dir",
     "checkpoint_interval",
+    "image_url",
+    "image_dir",
+    "synthetic_images",
+    "synthetic_image_size",
+    "image_detail",
 }
 
 # Deprecated keys (currently none, placeholder for future use)

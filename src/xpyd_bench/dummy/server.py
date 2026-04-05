@@ -146,7 +146,21 @@ def _estimate_prompt_tokens(prompt: str | list | None, messages: list | None) ->
         text = _normalize_prompt(prompt)
         return max(1, len(text) // 4)
     if messages is not None:
-        total = sum(len(m.get("content", "")) for m in messages)
+        total = 0
+        for m in messages:
+            c = m.get("content", "")
+            if isinstance(c, str):
+                total += len(c)
+            elif isinstance(c, list):
+                # Multimodal content: sum text parts, count image parts as 85 tokens
+                for part in c:
+                    if isinstance(part, dict):
+                        if part.get("type") == "text":
+                            total += len(part.get("text", ""))
+                        elif part.get("type") == "image_url":
+                            total += 85 * 4  # ~85 tokens for low-detail image
+            else:
+                total += len(str(c))
         return max(1, total // 4)
     return 1
 
