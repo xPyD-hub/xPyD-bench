@@ -698,3 +698,12 @@
 - YAML config support (`compare_baseline`, `baseline_dir`)
 - Reuse existing compare logic for regression detection
 - Tests covering save, list, show, delete, auto-compare, custom dir, and edge cases
+
+## M83: Benchmark Abort on Error Threshold ✅
+- `--max-error-rate <float>` CLI flag (0.0-1.0) to abort benchmark when error rate exceeds threshold
+- `--max-error-rate-window <N>` minimum completed requests before checking (default 10)
+- Early termination with grace period for in-flight requests
+- `BenchmarkResult` includes `aborted_reason` field with detailed message
+- YAML config support (`max_error_rate`, `max_error_rate_window`)
+- CI-friendly: partial results still computed and reported
+- Tests covering abort trigger, aborted_reason content, no-abort when disabled

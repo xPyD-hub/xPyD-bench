@@ -132,6 +132,8 @@ _KNOWN_KEYS: set[str] = {
     "compare_baseline",
     "baseline_dir",
     "extends",
+    "max_error_rate",
+    "max_error_rate_window",
 }
 
 # Deprecated keys (currently none, placeholder for future use)

@@ -159,3 +159,6 @@ class BenchmarkResult:
 
     # Rolling window metrics (M81)
     rolling_metrics: dict | None = None
+
+    # Abort reason when benchmark stopped early (M83)
+    aborted_reason: str | None = None

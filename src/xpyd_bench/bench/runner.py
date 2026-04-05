@@ -1007,6 +1007,41 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
 
     grace_period = getattr(args, "shutdown_grace_period", 5.0) or 5.0
 
+    # Error threshold abort (M83)
+    max_error_rate = getattr(args, "max_error_rate", None)
+    max_error_rate_window = getattr(args, "max_error_rate_window", 10) or 10
+    error_abort_requested = False
+    _completed_count = 0
+    _error_count = 0
+
+    def _on_task_done(t: asyncio.Task) -> None:
+        nonlocal _completed_count, _error_count, error_abort_requested
+        if t.cancelled():
+            return
+        try:
+            r = t.result()
+        except Exception:
+            _completed_count += 1
+            _error_count += 1
+            return
+        _completed_count += 1
+        if not r.success:
+            _error_count += 1
+        # Check error threshold (M83)
+        if (
+            max_error_rate is not None
+            and _completed_count >= max_error_rate_window
+            and not error_abort_requested
+        ):
+            current_rate = _error_count / _completed_count
+            if current_rate > max_error_rate:
+                error_abort_requested = True
+                if not args.disable_tqdm:
+                    print(
+                        f"\n⚠️  Error rate {current_rate:.1%} exceeds threshold "
+                        f"{max_error_rate:.1%} after {_completed_count} requests — aborting."
+                    )
+
     async with httpx.AsyncClient(**_build_client_kwargs(args, headers=headers)) as client:
         # Install signal handler for graceful shutdown
         loop = asyncio.get_running_loop()
@@ -1049,7 +1084,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             prompt_priorities = sorted_priorities
 
         while True:
-            if shutdown_requested:
+            if shutdown_requested or error_abort_requested:
                 break
             # Check duration limit
             if deadline and time.perf_counter() >= deadline:
@@ -1069,7 +1104,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
                     await token_bucket.acquire()
                 else:
                     await asyncio.sleep(intervals[interval_idx])
-                if shutdown_requested:
+                if shutdown_requested or error_abort_requested:
                     break
                 if deadline and time.perf_counter() >= deadline:
                     break
@@ -1080,6 +1115,13 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
                 )
             )
             tasks.append(task)
+            task.add_done_callback(_on_task_done)
+
+            # Yield to event loop to allow done callbacks to fire (M83)
+            if max_error_rate is not None:
+                await asyncio.sleep(0)
+                if error_abort_requested:
+                    break
 
             if not reporter and not args.disable_tqdm and (i + 1) % 100 == 0:
                 total_label = args.num_prompts if not duration_limit else "∞"
@@ -1088,7 +1130,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             i += 1
 
         # Wait for all launched tasks to complete (with grace period if shutting down)
-        if shutdown_requested and tasks:
+        if (shutdown_requested or error_abort_requested) and tasks:
             done, pending = await asyncio.wait(
                 tasks, timeout=grace_period, return_when=asyncio.ALL_COMPLETED
             )
@@ -1119,7 +1161,13 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
 
     result.total_duration_s = overall_end - overall_start
     result.requests = results_list
-    result.partial = shutdown_requested
+    result.partial = shutdown_requested or error_abort_requested
+    if error_abort_requested:
+        actual_rate = _error_count / _completed_count if _completed_count else 0
+        result.aborted_reason = (
+            f"Error rate {actual_rate:.1%} exceeded threshold {max_error_rate:.1%} "
+            f"after {_completed_count} requests"
+        )
 
     # Update num_prompts to actual count in duration mode
     if duration_limit:

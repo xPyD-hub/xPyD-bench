@@ -454,6 +454,23 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="IQR multiplier for latency anomaly detection (default: 1.5, 0 disables).",
     )
 
+    # Error threshold abort (M83)
+    parser.add_argument(
+        "--max-error-rate",
+        type=float,
+        default=None,
+        dest="max_error_rate",
+        help="Abort benchmark if error rate exceeds this threshold (0.0-1.0). "
+        "Checked after at least 10 requests complete.",
+    )
+    parser.add_argument(
+        "--max-error-rate-window",
+        type=int,
+        default=10,
+        dest="max_error_rate_window",
+        help="Minimum number of completed requests before checking error rate (default: 10).",
+    )
+
     # Request priority (M52)
     parser.add_argument(
         "--priority-levels",
