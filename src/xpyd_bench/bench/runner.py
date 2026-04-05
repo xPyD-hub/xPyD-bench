@@ -1072,6 +1072,10 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
 
     _compute_metrics(result)
 
+    # Custom percentile configuration (M73)
+    from xpyd_bench.bench.custom_percentiles import compute_custom_percentiles
+    compute_custom_percentiles(result, args)
+
     # Network latency decomposition (M57)
     latency_breakdown_enabled = getattr(args, "latency_breakdown", False)
     if latency_breakdown_enabled and result.requests:
@@ -1406,6 +1410,14 @@ def _print_summary(r: BenchmarkResult) -> None:
             f"P50={qt['p50_ms']:.2f} P90={qt['p90_ms']:.2f} "
             f"P99={qt['p99_ms']:.2f} ms ({qt['count']} requests)"
         )
+    if r.custom_percentiles:
+        print()
+        print("  📊 Custom Percentiles:")
+        label_map = {"e2el_ms": "E2EL", "ttft_ms": "TTFT", "tpot_ms": "TPOT", "itl_ms": "ITL"}
+        for prefix, pcts in r.custom_percentiles.items():
+            label = label_map.get(prefix, prefix)
+            parts_cp = [f"{k}={v:.2f}" for k, v in pcts.items()]
+            print(f"      {label:5s}  {', '.join(parts_cp)} ms")
     print("=" * 60)
 
 
@@ -1553,4 +1565,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["queue_time_summary"] = r.queue_time_summary
     if r.fingerprint:
         d["fingerprint"] = r.fingerprint
+    if r.custom_percentiles:
+        d["custom_percentiles"] = r.custom_percentiles
     return d

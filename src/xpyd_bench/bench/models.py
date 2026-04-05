@@ -147,3 +147,6 @@ class BenchmarkResult:
 
     # Benchmark fingerprint (M72)
     fingerprint: str | None = None
+
+    # Custom percentile results (M73)
+    custom_percentiles: dict | None = None
