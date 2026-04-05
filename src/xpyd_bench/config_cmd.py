@@ -150,6 +150,10 @@ _KNOWN_KEYS: set[str] = {
     "heatmap_export",
     "heatmap_bucket_width",
     "heatmap_bins",
+    "autotune_target",
+    "autotune_max_concurrency",
+    "autotune_error_budget",
+    "autotune_prompts",
 }
 
 # Deprecated keys (currently none, placeholder for future use)

@@ -90,6 +90,7 @@ _SUBCOMMANDS = {
     "cache-test",
     "lora-compare",
     "tag-compare",
+    "autotune",
 }
 
 
@@ -207,6 +208,10 @@ def main() -> None:
         from xpyd_bench.tag_compare import tag_compare_main
 
         tag_compare_main(rest)
+    elif subcmd == "autotune":
+        from xpyd_bench.autotune import autotune_main
+
+        autotune_main(rest)
 
 
 def _config_subcommand(argv: list[str]) -> None:
