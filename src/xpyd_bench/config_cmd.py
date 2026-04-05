@@ -91,6 +91,7 @@ _KNOWN_KEYS: set[str] = {
     "tags",
     "template_vars",
     "warmup",
+    "warmup_profile",
     "compress",
     "request_id_prefix",
     "anomaly_threshold",
