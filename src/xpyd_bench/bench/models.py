@@ -20,6 +20,8 @@ class RequestResult:
     success: bool = True
     error: str | None = None
     request_id: str | None = None
+    response_text: str | None = None
+    validation_errors: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -91,3 +93,6 @@ class BenchmarkResult:
 
     # Anomaly detection results (M43)
     anomalies: dict | None = None
+
+    # Validation summary (M47)
+    validation_summary: dict | None = None

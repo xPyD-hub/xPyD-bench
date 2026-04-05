@@ -372,6 +372,20 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="IQR multiplier for latency anomaly detection (default: 1.5, 0 disables).",
     )
 
+    # Response validation (M47)
+    parser.add_argument(
+        "--validate-response",
+        type=str,
+        action="append",
+        default=None,
+        dest="validate_response",
+        metavar="MODE",
+        help=(
+            "Validate response content (repeatable). Modes: non-empty, json, "
+            "regex:<pattern>, min-tokens:<N>."
+        ),
+    )
+
     # Custom headers
     parser.add_argument(
         "--header",

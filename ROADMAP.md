@@ -373,3 +373,13 @@
 - Works with all rate patterns, token bucket, adaptive concurrency
 - Dry-run shows duration mode info
 - Tests covering CLI parsing, dry-run output, YAML config, model serialization
+
+## M47: Response Validation & Content Checking ✅
+- `--validate-response <mode>` CLI flag (repeatable) for response content validation
+- Modes: `non-empty`, `json`, `regex:<pattern>`, `min-tokens:<N>`
+- Multiple validators can be chained
+- `RequestResult` includes `response_text` and `validation_errors` fields
+- `BenchmarkResult` includes `validation_summary` with pass/fail counts and pass rate
+- Terminal summary shows validation pass rate
+- YAML config support (`validate_response: ["non-empty", "min-tokens:10"]`)
+- Tests covering all validation modes, aggregation, CLI integration, and YAML config

@@ -218,6 +218,16 @@ async def _send_request(
                 usage = body.get("usage", {})
                 result.prompt_tokens = usage.get("prompt_tokens", 0)
                 result.completion_tokens = usage.get("completion_tokens", 0)
+
+                # Extract response text for validation (M47)
+                choices = body.get("choices", [])
+                if choices:
+                    c = choices[0]
+                    result.response_text = (
+                        c.get("text")
+                        or (c.get("message") or {}).get("content")
+                        or ""
+                    )
                 # Non-streaming: TPOT cannot be accurately measured because
                 # latency includes prefill time. Leave as None for consistency
                 # with streaming TPOT which correctly excludes TTFT/prefill.
@@ -259,6 +269,7 @@ async def _send_streaming(
     first_token_time: float | None = None
     last_token_time: float = start
     token_count = 0
+    collected_text_parts: list[str] = []  # M47: collect response text for validation
     stream_usage: dict[str, Any] | None = None
 
     try:
@@ -295,6 +306,7 @@ async def _send_streaming(
                     if text:
                         token_count += 1
                         has_content = True
+                        collected_text_parts.append(text)
                 if not has_content:
                     continue
                 if first_token_time is None:
@@ -321,6 +333,9 @@ async def _send_streaming(
     if token_count > 1 and first_token_time is not None:
         generation_time_ms = (last_token_time - first_token_time) * 1000.0
         result.tpot_ms = generation_time_ms / (token_count - 1)
+
+    # M47: Store collected response text for validation
+    result.response_text = "".join(collected_text_parts)
 
     return result
 
@@ -904,6 +919,33 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
         if anomaly_result is not None and anomaly_result.count > 0:
             result.anomalies = anomaly_result.to_dict()
 
+    # Response validation (M47)
+    validators_specs = getattr(args, "validate_response", None) or []
+    if validators_specs:
+        from xpyd_bench.bench.validation import ValidationResult as VResult
+        from xpyd_bench.bench.validation import (
+            aggregate_validations,
+            parse_validators,
+            validate_response,
+        )
+
+        validators = parse_validators(validators_specs)
+        v_results: list[VResult] = []
+        for req in result.requests:
+            if req.success and req.response_text is not None:
+                vr = validate_response(req.response_text, validators)
+                req.validation_errors = vr.errors
+                v_results.append(vr)
+        if v_results:
+            summary = aggregate_validations(v_results)
+            result.validation_summary = {
+                "total": summary.total,
+                "passed": summary.passed,
+                "failed": summary.failed,
+                "pass_rate": round(summary.pass_rate, 2),
+                "error_counts": summary.error_counts,
+            }
+
     if shutdown_requested:
         print(
             f"\n⚠️  Partial results: {result.completed} completed, "
@@ -953,6 +995,15 @@ def _print_summary(r: BenchmarkResult) -> None:
             lat = a["latency_ms"]
             dev = a["deviation_factor"]
             print(f"      Request #{idx}: {lat:.2f} ms ({dev:.1f}x IQR above Q3)")
+    if r.validation_summary:
+        vs = r.validation_summary
+        print(
+            f"\n  🔍 Validation: {vs['passed']}/{vs['total']} passed "
+            f"({vs['pass_rate']}%)"
+        )
+        if vs["failed"] > 0:
+            for err_type, cnt in vs["error_counts"].items():
+                print(f"      {err_type}: {cnt}")
     print("=" * 60)
 
 
