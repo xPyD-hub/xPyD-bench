@@ -483,7 +483,7 @@
 - Plugin interface for custom storage backends
 - Tests covering archival workflow and retrieval
 
-## M59: Request Dependency Chains
+## M59: Request Dependency Chains ✅
 - Define request sequences where output of request N feeds into request N+1
 - `--chain <path>` JSONL file defining extraction rules between requests
 - Measure end-to-end chain latency and per-step contribution
