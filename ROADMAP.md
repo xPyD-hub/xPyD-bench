@@ -405,7 +405,7 @@
 - Compatible with Jenkins, GitHub Actions, GitLab CI JUnit report parsers
 - Tests covering XML structure, request failures, SLA integration, and CLI integration
 
-## M49: Benchmark Repeat Mode ✅
+## M50: Benchmark Repeat Mode ✅
 - `--repeat N` CLI flag to run the benchmark N times (default 1)
 - `--repeat-delay SECONDS` CLI flag for pause between runs (default 0)
 - YAML config support (`repeat`, `repeat_delay`)
