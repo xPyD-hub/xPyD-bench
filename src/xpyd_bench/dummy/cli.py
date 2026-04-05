@@ -57,6 +57,12 @@ def dummy_main(argv: list[str] | None = None) -> None:
         default=1536,
         help="Dimensionality of embedding vectors (default: 1536).",
     )
+    parser.add_argument(
+        "--max-rps",
+        type=float,
+        default=None,
+        help="Maximum requests per second before rejecting with 429 (default: unlimited).",
+    )
     args = parser.parse_args(argv)
 
     import uvicorn
@@ -71,6 +77,7 @@ def dummy_main(argv: list[str] | None = None) -> None:
         eos_min_ratio=args.eos_min_ratio,
         require_api_key=args.require_api_key,
         embedding_dim=args.embedding_dim,
+        max_rps=args.max_rps,
     )
     app = create_app(config)
 

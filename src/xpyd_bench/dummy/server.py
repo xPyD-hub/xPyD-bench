@@ -36,6 +36,7 @@ class ServerConfig:
     eos_min_ratio: float = 0.5  # EOS won't fire before this fraction of max_tokens
     require_api_key: str | None = None  # If set, require this API key for auth
     embedding_dim: int = 1536  # Dimensionality for embedding vectors
+    max_rps: float | None = None  # If set, reject requests above this rate (429)
 
 
 # Global config — set before starting the server
@@ -1001,6 +1002,35 @@ def create_app(config: ServerConfig | None = None) -> Starlette:
                     )
             return await call_next(request)
 
+    import time as _time
+
+    class RateLimitMiddleware(BaseHTTPMiddleware):
+        """Reject requests above max_rps with 429 Too Many Requests."""
+
+        def __init__(self, app, max_rps: float):  # type: ignore[no-untyped-def]
+            super().__init__(app)
+            self._max_rps = max_rps
+            self._window: list[float] = []
+
+        async def dispatch(self, request: Request, call_next):  # type: ignore[override]
+            if not request.url.path.startswith("/v1/"):
+                return await call_next(request)
+            now = _time.monotonic()
+            # Slide 1-second window
+            self._window = [t for t in self._window if now - t < 1.0]
+            if len(self._window) >= self._max_rps:
+                return JSONResponse(
+                    {
+                        "error": {
+                            "message": "Rate limit exceeded",
+                            "type": "rate_limit_error",
+                        }
+                    },
+                    status_code=429,
+                )
+            self._window.append(now)
+            return await call_next(request)
+
     # Clear batch store on app creation
     _batches.clear()
 
@@ -1015,4 +1045,6 @@ def create_app(config: ServerConfig | None = None) -> Starlette:
     ]
 
     middleware = [Middleware(AuthMiddleware)]
+    if _config.max_rps is not None:
+        middleware.append(Middleware(RateLimitMiddleware, max_rps=_config.max_rps))
     return Starlette(routes=routes, middleware=middleware)
