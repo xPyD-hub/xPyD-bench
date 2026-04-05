@@ -468,7 +468,7 @@
 - YAML config support (`tools`, `response_format`)
 - Tests covering function calling, JSON mode, schema validation, and dummy server
 
-## M57: Network Latency Decomposition
+## M57: Network Latency Decomposition ✅
 - Measure and report DNS resolution, TCP connect, TLS handshake, and server processing times separately
 - `--latency-breakdown` flag to enable detailed network timing
 - Per-request breakdown in debug log and per-request export
