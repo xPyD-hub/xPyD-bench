@@ -718,6 +718,10 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             prompt_priorities = [None] * args.num_prompts
 
     # Apply template variable substitution (M37)
+
+    # Store prompts text for cache savings analysis (M92)
+    if getattr(args, "analyze_cache_savings", False):
+        args._prompts_text = list(prompts)
     template_vars_path = getattr(args, "template_vars", None)
     if template_vars_path:
         from xpyd_bench.templating import apply_templates, load_template_vars
@@ -1506,6 +1510,36 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             "stats": noise_injector.stats.to_dict(),
         }
 
+    # Prompt caching cost analysis (M92)
+    cache_savings_enabled = bool(getattr(args, "analyze_cache_savings", False))
+    if cache_savings_enabled and hasattr(args, "_prompts_text") and args._prompts_text:
+        from xpyd_bench.bench.cache_savings import analyze_cache_savings
+
+        _ratio = getattr(args, "cache_pricing_ratio", 0.5)
+        _cost_1k: float | None = None
+        if hasattr(args, "_cost_model") and args._cost_model is not None:
+            _cm = args._cost_model
+            _mp = _cm.models.get(result.model) or _cm.default
+            if _mp:
+                _cost_1k = _mp.get("input")
+        _cs = analyze_cache_savings(
+            args._prompts_text,
+            cache_pricing_ratio=_ratio,
+            cost_per_1k_input=_cost_1k,
+        )
+        result.cache_savings = _cs
+        if not getattr(args, "disable_tqdm", False):
+            print("\n--- Prompt Caching Cost Analysis ---")
+            print(f"  Prompts analyzed: {_cs['num_prompts']}")
+            print(f"  Cacheable token ratio: {_cs['cacheable_token_ratio']:.2%}")
+            print(f"  Estimated cache hit rate: {_cs['estimated_cache_hit_rate']:.2%}")
+            print(f"  Projected savings ratio: {_cs['savings_ratio']:.2%}")
+            if _cs.get("cost_savings"):
+                _csav = _cs["cost_savings"]
+                print(f"  Cost without cache: ${_csav['full_cost']:.4f}")
+                print(f"  Cost with cache:    ${_csav['cached_cost']:.4f}")
+                print(f"  Savings:            ${_csav['saved']:.4f}")
+
     # Structured output validation (M56)
     _tools_path = getattr(args, "tools", None)
     _response_format = getattr(args, "response_format", None)
@@ -1860,4 +1894,6 @@ def _to_dict(r: BenchmarkResult) -> dict:
         d["speculative_summary"] = r.speculative_summary
     if r.token_latency_cdf:
         d["token_latency_cdf"] = r.token_latency_cdf
+    if r.cache_savings:
+        d["cache_savings"] = r.cache_savings
     return d

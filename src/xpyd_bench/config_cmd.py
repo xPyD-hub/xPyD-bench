@@ -142,6 +142,8 @@ _KNOWN_KEYS: set[str] = {
     "speculative_metrics",
     "warmup_curve",
     "token_cdf",
+    "analyze_cache_savings",
+    "cache_pricing_ratio",
 }
 
 # Deprecated keys (currently none, placeholder for future use)
