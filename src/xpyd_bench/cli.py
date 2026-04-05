@@ -2118,3 +2118,83 @@ def model_compare_main(argv: list[str] | None = None) -> None:
         for mc in multi.comparisons
     ):
         raise SystemExit(1)
+
+
+def stream_compare_main(argv: list[str] | None = None) -> None:
+    """Entry point for ``xpyd-bench stream-compare`` subcommand (M76)."""
+    parser = argparse.ArgumentParser(
+        prog="xpyd-bench-stream-compare",
+        description="Compare streaming vs non-streaming performance on same endpoint",
+    )
+    _add_vllm_compat_args(parser)
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=5.0,
+        help="Regression threshold percentage (default: 5.0).",
+    )
+    parser.add_argument(
+        "--json-output",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Export results and comparison to a JSON file.",
+    )
+    parser.add_argument(
+        "--markdown-output",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Export comparison as a Markdown table.",
+    )
+    args = parser.parse_args(argv)
+
+    # Resolve base_url from host/port if not set
+    if not args.base_url:
+        args.base_url = f"http://{args.host}:{args.port}"
+
+    # Merge YAML config if provided
+    if args.config:
+        explicit = _get_explicit_keys(parser, args)
+        args = _load_yaml_config(args.config, args, explicit_keys=explicit)
+
+    # Resolve API key
+    import os
+
+    if args.api_key is None:
+        args.api_key = os.environ.get("OPENAI_API_KEY")
+
+    # Resolve custom headers
+    args.custom_headers = _resolve_custom_headers(args)
+
+    from xpyd_bench import __version__
+    from xpyd_bench.stream_compare import (
+        export_stream_compare_json,
+        export_stream_compare_markdown,
+        format_stream_compare_summary,
+        run_stream_compare,
+    )
+
+    print(f"xpyd-bench-stream-compare v{__version__}")
+    print(f"  Base URL: {args.base_url}")
+    print(f"  Model:    {args.model}")
+    print(f"  Threshold: {args.threshold}%")
+    print()
+
+    result = asyncio.run(
+        run_stream_compare(args, threshold_pct=args.threshold)
+    )
+
+    print(format_stream_compare_summary(result))
+
+    if args.json_output:
+        p = export_stream_compare_json(result, args.json_output)
+        print(f"\nJSON output saved to {p}")
+
+    if args.markdown_output:
+        p = export_stream_compare_markdown(result, args.markdown_output)
+        print(f"\nMarkdown output saved to {p}")
+
+    # Exit code 1 if regression detected
+    if result.comparison and result.comparison.has_regression:
+        raise SystemExit(1)

@@ -626,7 +626,7 @@
 - JSON and Markdown comparison output
 - Tests covering multi-model orchestration, result comparison, and CLI integration
 
-## M76: Streaming vs Non-Streaming Overhead Analysis ⬜
+## M76: Streaming vs Non-Streaming Overhead Analysis ✅
 - `xpyd-bench stream-compare --base-url <url> --model <model>` CLI subcommand
 - Auto-run same prompts in streaming and non-streaming modes
 - Report streaming overhead: TTFT delta, total latency delta, throughput impact

@@ -85,6 +85,7 @@ _SUBCOMMANDS = {
     "discover",
     "resume",
     "model-compare",
+    "stream-compare",
 }
 
 
@@ -184,6 +185,10 @@ def main() -> None:
         from xpyd_bench.cli import model_compare_main
 
         model_compare_main(rest)
+    elif subcmd == "stream-compare":
+        from xpyd_bench.cli import stream_compare_main
+
+        stream_compare_main(rest)
 
 
 def _config_subcommand(argv: list[str]) -> None:
