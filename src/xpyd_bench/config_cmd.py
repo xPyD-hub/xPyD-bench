@@ -147,6 +147,9 @@ _KNOWN_KEYS: set[str] = {
     "pacing_report",
     "quality_check",
     "consistency_check",
+    "heatmap_export",
+    "heatmap_bucket_width",
+    "heatmap_bins",
 }
 
 # Deprecated keys (currently none, placeholder for future use)
