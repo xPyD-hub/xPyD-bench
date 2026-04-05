@@ -743,7 +743,7 @@ async def run_benchmark(args: Namespace, base_url: str) -> tuple[dict, Benchmark
             for wi, wp in enumerate(warmup_prompts):
                 payload = _build_payload(args, wp, is_chat, is_embeddings)
                 wr = await _send_request(warmup_client, url, payload, is_streaming)
-                warmup_latencies.append(wr.latency * 1000.0)  # s → ms
+                warmup_latencies.append(wr.latency_ms)  # already in ms
                 if not args.disable_tqdm:
                     status = "ok" if wr.success else f"FAIL: {wr.error}"
                     print(f"  Warmup {wi + 1}/{warmup_count}: {status}")
