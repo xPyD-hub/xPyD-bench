@@ -2025,3 +2025,96 @@ def batch_main(argv: list[str] | None = None) -> None:
         with open(p, "w") as f:
             json.dump(result_dict, f, indent=2, default=str)
         print(f"\nResult saved to {p}")
+
+
+def model_compare_main(argv: list[str] | None = None) -> None:
+    """Entry point for ``xpyd-bench model-compare`` subcommand (M75)."""
+    parser = argparse.ArgumentParser(
+        prog="xpyd-bench-model-compare",
+        description="Benchmark same prompts against multiple models on same endpoint",
+    )
+    _add_vllm_compat_args(parser)
+    parser.add_argument(
+        "--models",
+        type=str,
+        nargs="+",
+        required=True,
+        help="Model names to benchmark (at least 2).",
+    )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=5.0,
+        help="Regression threshold percentage (default: 5.0).",
+    )
+    parser.add_argument(
+        "--json-output",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Export all results and comparisons to a JSON file.",
+    )
+    parser.add_argument(
+        "--markdown-output",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Export comparison as a Markdown table.",
+    )
+    args = parser.parse_args(argv)
+
+    if len(args.models) < 2:
+        parser.error("--models requires at least 2 model names")
+
+    # Resolve base_url from host/port if not set
+    if not args.base_url:
+        args.base_url = f"http://{args.host}:{args.port}"
+
+    # Merge YAML config if provided
+    if args.config:
+        explicit = _get_explicit_keys(parser, args)
+        args = _load_yaml_config(args.config, args, explicit_keys=explicit)
+
+    # Resolve API key
+    import os
+
+    if args.api_key is None:
+        args.api_key = os.environ.get("OPENAI_API_KEY")
+
+    # Resolve custom headers
+    args.custom_headers = _resolve_custom_headers(args)
+
+    from xpyd_bench import __version__
+    from xpyd_bench.model_compare import (
+        export_model_compare_json,
+        export_model_compare_markdown,
+        format_model_compare_summary,
+        run_model_compare,
+    )
+
+    print(f"xpyd-bench-model-compare v{__version__}")
+    print(f"  Base URL: {args.base_url}")
+    print(f"  Models:   {', '.join(args.models)}")
+    print(f"  Threshold: {args.threshold}%")
+    print()
+
+    multi = asyncio.run(
+        run_model_compare(args, args.models, threshold_pct=args.threshold)
+    )
+
+    print(format_model_compare_summary(multi))
+
+    if args.json_output:
+        p = export_model_compare_json(multi, args.json_output)
+        print(f"\nJSON output saved to {p}")
+
+    if args.markdown_output:
+        p = export_model_compare_markdown(multi, args.markdown_output)
+        print(f"\nMarkdown output saved to {p}")
+
+    # Exit code 1 if any regression detected
+    if any(
+        mc.comparison and mc.comparison.has_regression
+        for mc in multi.comparisons
+    ):
+        raise SystemExit(1)
