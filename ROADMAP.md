@@ -676,3 +676,13 @@
 - `config dump` shows fully resolved config with inheritance applied
 - CLI flags take highest precedence (CLI > child YAML > parent YAML)
 - Tests covering single/multi-level inheritance, circular detection, CLI precedence, and error cases
+
+## M81: Rolling Window Metrics (Percentile-over-Time) ✅
+- `--rolling-metrics` CLI flag to enable rolling window latency percentile tracking
+- `--rolling-window SECONDS` configurable window size (default 10)
+- `--rolling-step SECONDS` configurable step size (default 5)
+- Compute P50/P90/P99 latency per time window across benchmark duration
+- Detect mid-run performance degradation (compare first vs last window P99)
+- `BenchmarkResult` includes `rolling_metrics` dict with windows and degradation info
+- YAML config support (`rolling_metrics`, `rolling_window`, `rolling_step`)
+- Tests covering window computation, degradation detection, custom percentiles, and config keys
