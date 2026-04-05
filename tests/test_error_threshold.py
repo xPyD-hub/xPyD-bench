@@ -52,13 +52,11 @@ def test_error_abort_sets_partial_and_reason():
 
 def test_aborted_reason_in_serialization():
     """aborted_reason should appear in dict serialization."""
-    from dataclasses import asdict
-
     from xpyd_bench.bench.models import BenchmarkResult
 
     result = BenchmarkResult()
     result.aborted_reason = "Error rate too high"
-    d = asdict(result)
+    d = result.to_dict()
     assert d["aborted_reason"] == "Error rate too high"
 
 
@@ -72,7 +70,7 @@ def test_aborted_reason_none_by_default():
 
 def test_known_config_keys_include_error_rate():
     """max_error_rate and max_error_rate_window are in known config keys."""
-    from xpyd_bench.config_cmd import _KNOWN_KEYS
+    from xpyd_bench.config_cmd import KNOWN_CONFIG_KEYS
 
-    assert "max_error_rate" in _KNOWN_KEYS
-    assert "max_error_rate_window" in _KNOWN_KEYS
+    assert "max_error_rate" in KNOWN_CONFIG_KEYS
+    assert "max_error_rate_window" in KNOWN_CONFIG_KEYS
