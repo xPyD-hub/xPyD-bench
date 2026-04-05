@@ -77,6 +77,7 @@ _SUBCOMMANDS = {
     "presets",
     "batch",
     "sweep",
+    "healthcheck",
 }
 
 
@@ -144,6 +145,10 @@ def main() -> None:
         from xpyd_bench.sweep import sweep_main
 
         sweep_main(rest)
+    elif subcmd == "healthcheck":
+        from xpyd_bench.healthcheck import healthcheck_main
+
+        healthcheck_main(rest)
 
 
 def _config_subcommand(argv: list[str]) -> None:
