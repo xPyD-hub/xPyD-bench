@@ -457,7 +457,7 @@
 - JSON output with saturation analysis section
 - Tests covering load shedding detection, saturation point, and CLI integration
 
-## M56: Structured Output / Function Calling Benchmarking
+## M56: Structured Output / Function Calling Benchmarking ✅
 - `--tools <path>` CLI flag to load tool/function definitions (OpenAI function calling format)
 - `--response-format json_object` and `--response-format json_schema` support
 - Measure structured output overhead: latency delta vs unconstrained generation
