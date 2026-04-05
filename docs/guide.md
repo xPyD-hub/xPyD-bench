@@ -71,6 +71,7 @@ xpyd-bench [OPTIONS]
 xpyd-bench compare    # Compare multiple benchmark results
 xpyd-bench profile    # Performance profiling mode
 xpyd-bench replay     # Replay recorded requests
+xpyd-bench lora-compare  # Compare LoRA adapters on same endpoint (M89)
 xpyd-bench config-dump      # Export current configuration
 xpyd-bench config-validate  # Validate configuration file
 xpyd-dummy             # Start dummy server for testing

@@ -88,6 +88,7 @@ _SUBCOMMANDS = {
     "stream-compare",
     "baseline",
     "cache-test",
+    "lora-compare",
 }
 
 
@@ -197,6 +198,10 @@ def main() -> None:
         from xpyd_bench.cache_test import cache_test_main
 
         cache_test_main(rest)
+    elif subcmd == "lora-compare":
+        from xpyd_bench.cli import lora_compare_main
+
+        lora_compare_main(rest)
 
 
 def _config_subcommand(argv: list[str]) -> None:

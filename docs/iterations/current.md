@@ -2,9 +2,29 @@
 
 > Updated: 2026-04-05
 
-## Current Milestone: M88 — Speculative Decoding Metrics
+## Current Milestone: M89 — Multi-LoRA Endpoint Benchmarking
 
-M88 is complete, adding benchmark metric support for Speculative Decoding.
+### What was done
+
+- Added `xpyd-bench lora-compare` CLI subcommand
+- New module `src/xpyd_bench/lora_compare.py` implementing:
+  - Sequential benchmarking of multiple LoRA adapters on the same base model
+  - `--interleave` flag for round-robin adapter switching to measure switching overhead
+  - Per-adapter metrics: TTFT, TPOT, throughput, latency percentiles
+  - Pairwise comparison with regression detection and Mann-Whitney U significance testing
+  - Adapter switching overhead calculation (sequential vs interleaved mean TTFT)
+  - JSON and terminal/Markdown comparison output
+- Registered `lora-compare` subcommand in `main.py` dispatch table
+- Added `lora_compare_main` entry point in `cli.py`
+- Comprehensive test suite in `tests/test_lora_compare.py` covering:
+  - Data class serialization
+  - Statistical significance computation
+  - Sequential and interleaved orchestration (mocked)
+  - Three-adapter comparison
+  - Summary formatting (terminal + Markdown)
+  - JSON and Markdown export
+
+### Result: pending review
 
 ## Feature List
 
@@ -20,6 +40,7 @@ M88 is complete, adding benchmark metric support for Speculative Decoding.
 - **Multi-model comparison** (M75) — compare multiple models side by side
 - **Streaming vs non-streaming overhead** (M76) — streaming overhead analysis
 - **Multimodal vision benchmark** (M77) — vision model support
+- **Multi-LoRA endpoint benchmarking** (M89) — compare LoRA adapters with switching overhead
 - **Multi-turn conversation** — multi-turn dialogue testing
 - **Chain benchmark** — request chain testing
 - **Sweep mode** — parameter sweep
@@ -48,34 +69,7 @@ M88 is complete, adding benchmark metric support for Speculative Decoding.
 
 ### Reporting & Integration
 - Rich CLI output
-- JSON / HTML / JUnit XML reports
-- Prometheus metrics export
-- WebSocket real-time metrics push
+- JSON / Markdown / HTML export
+- JUnit XML for CI integration
 - Webhook notifications
-- OTLP trace export
-- Heatmap visualization
-
-### Tools
-- `xpyd-dummy` — mock server for testing without a real model
-- `xpyd-bench compare` — result comparison
-- `xpyd-bench profile` — performance profiling
-- `xpyd-bench replay` — request replay
-- `xpyd-bench config-dump / config-validate` — configuration management
-
-## Known Limitations
-
-1. **No gRPC backend support** — currently only HTTP/1.1 and HTTP/2 (requires `h2` installation)
-2. **Token counting depends on tiktoken** — requires `xpyd-bench[tokenizer]`; otherwise uses rough estimation
-3. **Distributed mode has no auto-discovery** — worker addresses must be specified manually
-4. **No built-in charts** — HTML reports only contain tables; use external tools (Grafana + Prometheus exporter) for visualization
-5. **License TBD** — open-source license not yet determined
-
-## Next Steps
-
-- **M89+**: See [ROADMAP.md](../../ROADMAP.md) for the full roadmap
-- Priority areas:
-  - GPU utilization correlation analysis
-  - A/B testing framework (automatic statistical significance testing)
-  - Richer HTML reports (embedded charts)
-  - gRPC backend support
-  - Automatic cluster node discovery
+- OpenTelemetry (OTLP) export

@@ -2383,3 +2383,80 @@ def stream_compare_main(argv: list[str] | None = None) -> None:
     # Exit code 1 if regression detected
     if result.comparison and result.comparison.has_regression:
         raise SystemExit(1)
+
+
+def lora_compare_main(argv: list[str] | None = None) -> None:
+    """Entry point for ``xpyd-bench lora-compare`` subcommand (M89)."""
+    import argparse as _ap
+
+    parser = _ap.ArgumentParser(
+        prog="xpyd-bench-lora-compare",
+        description="Benchmark multiple LoRA adapters on the same endpoint (M89)",
+    )
+    parser.add_argument(
+        "--base-url", default="http://127.0.0.1:8000",
+        help="Target server URL",
+    )
+    parser.add_argument(
+        "--models", required=True, nargs="+",
+        help="LoRA adapter / model names (first is baseline)",
+    )
+    parser.add_argument(
+        "--endpoint", default="/v1/completions",
+        help="API endpoint path",
+    )
+    parser.add_argument("--num-prompts", type=int, default=100)
+    parser.add_argument("--request-rate", type=float, default=float("inf"))
+    parser.add_argument("--max-concurrency", type=int, default=None)
+    parser.add_argument("--input-len", type=int, default=256)
+    parser.add_argument("--output-len", type=int, default=128)
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--dataset-name", default="random")
+    parser.add_argument("--dataset-path", default=None)
+    parser.add_argument(
+        "--interleave", action="store_true",
+        help="Enable round-robin adapter switching to measure switching overhead",
+    )
+    parser.add_argument("--threshold", type=float, default=5.0)
+    parser.add_argument("--json-output", "-j", default=None)
+    parser.add_argument("--markdown-output", "-m", default=None)
+
+    args = parser.parse_args(argv)
+
+    import asyncio
+
+    from xpyd_bench import __version__
+    from xpyd_bench.lora_compare import (
+        export_lora_compare_json,
+        export_lora_compare_markdown,
+        format_lora_compare_summary,
+        run_lora_compare,
+    )
+
+    print(f"xpyd-bench-lora-compare v{__version__}")
+    print(f"Adapters: {', '.join(args.models)}")
+    print(f"Interleave: {args.interleave}")
+    print()
+
+    result = asyncio.run(
+        run_lora_compare(
+            args, args.models,
+            interleave=args.interleave,
+            threshold_pct=args.threshold,
+        )
+    )
+
+    print(format_lora_compare_summary(result))
+
+    if args.json_output:
+        p = export_lora_compare_json(result, args.json_output)
+        print(f"\nJSON output saved to {p}")
+
+    if args.markdown_output:
+        p = export_lora_compare_markdown(result, args.markdown_output)
+        print(f"\nMarkdown output saved to {p}")
+
+    # Exit code 1 if any adapter has regression vs baseline
+    for ac in result.comparisons:
+        if ac.comparison and ac.comparison.has_regression:
+            raise SystemExit(1)
