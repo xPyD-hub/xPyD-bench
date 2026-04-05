@@ -462,6 +462,15 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
         help="Track rate-limit response headers and report backpressure summary.",
     )
 
+    # Payload size tracking (M67)
+    parser.add_argument(
+        "--track-payload-size",
+        action="store_true",
+        default=False,
+        dest="track_payload_size",
+        help="Track request/response payload sizes and report bandwidth summary.",
+    )
+
     # Response validation (M47)
     parser.add_argument(
         "--validate-response",

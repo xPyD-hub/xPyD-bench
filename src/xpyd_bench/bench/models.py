@@ -29,6 +29,8 @@ class RequestResult:
     schema_valid: bool | None = None  # JSON schema conformance (M56)
     latency_breakdown: dict | None = None  # Network latency decomposition (M57)
     ratelimit_headers: dict | None = None  # Rate-limit headers (M66)
+    request_bytes: int | None = None  # Request payload size in bytes (M67)
+    response_bytes: int | None = None  # Response payload size in bytes (M67)
 
 
 @dataclass
@@ -124,3 +126,6 @@ class BenchmarkResult:
 
     # Rate-limit tracking summary (M66)
     ratelimit_summary: dict | None = None
+
+    # Payload size tracking summary (M67)
+    payload_summary: dict | None = None
