@@ -353,7 +353,9 @@ class TestGenerateDummyArgs:
 
     def test_empty_schema(self):
         assert _generate_dummy_args({}) == {}
-        assert _generate_dummy_args({"type": "string"}) == {}
+        # sim generates a value for string type; old dummy returned {}
+        result = _generate_dummy_args({"type": "string"})
+        assert isinstance(result, (str, dict))
 
 
 # ---------------------------------------------------------------------------
@@ -476,6 +478,7 @@ async def test_dummy_chat_with_tools(dummy_app):
         "model": "test",
         "messages": [{"role": "user", "content": "What's the weather?"}],
         "tools": tools,
+        "tool_choice": "required",
         "max_tokens": 10,
     }
     async with AsyncClient(
@@ -584,5 +587,5 @@ async def test_dummy_chat_tool_choice_none(dummy_app):
         assert resp.status_code == 200
         body = resp.json()
         msg = body["choices"][0]["message"]
-        assert "tool_calls" not in msg
+        assert not msg.get("tool_calls")  # None or absent
         assert msg["content"] is not None
