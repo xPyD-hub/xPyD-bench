@@ -29,14 +29,21 @@ Each reviewer uses its own dedicated token. Never use author's token for reviews
 3. Re-requested reviews take priority — always perform fresh review.
 4. One review per PR per commit SHA — never submit multiple reviews for same commit.
 
-## Review Priority
+## Review Process: Two-Stage Gate
 
-Reviewers evaluate in this order:
-1. **Design value** — Is this feature/change worth building? Does it solve a real problem? Is the approach sound? If the design itself is flawed, REQUEST_CHANGES before reviewing any code.
-2. **Design conformance** — Does the implementation match the linked GitHub Issue spec? If it deviates, REQUEST_CHANGES — even if the code is technically correct.
-3. **Code quality** — See checklist below.
+### Stage 1: Design Review (Gate)
 
-A technically perfect implementation of a bad design is still wrong. Reject it.
+Before looking at any code, evaluate the design:
+
+- **Is this change valuable?** Does it solve a real problem? Is it worth the complexity?
+- **Is the approach sound?** Is this the right way to solve it?
+- **Does it match the linked Issue spec?** If the PR deviates from the agreed design, reject.
+
+**If the design has no value or the approach is wrong → CLOSE the PR immediately.** Do not proceed to code review. Do not waste time reviewing code for a feature that shouldn't exist.
+
+### Stage 2: Code Review (only after Stage 1 passes)
+
+Only if the design is valuable and the approach is sound, review the code using the checklist below. Apply proxy-level strict standards — every line examined.
 
 ## Review Checklist
 For each non-draft PR with a new commit:
