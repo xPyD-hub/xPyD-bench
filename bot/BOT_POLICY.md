@@ -25,9 +25,10 @@
 3. Run tests: `pytest tests/ -q`
 4. All three must pass locally before pushing.
 
-## Merge Policy
-- **Bots must NEVER merge a PR.** All merges done by human maintainer.
-- Non-negotiable. Do not call merge API under any circumstances.
+## Merge Policy (Loop Mode)
+- Bot MAY merge a PR after: both reviewers approve + CI is fully green.
+- Bot MAY close a PR on reviewer timeout or iteration failure.
+- Auto-merge is part of the autonomous development loop.
 
 ## CI
 - CI must be 100% green before merge. No skips allowed.

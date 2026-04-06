@@ -29,6 +29,15 @@ Each reviewer uses its own dedicated token. Never use author's token for reviews
 3. Re-requested reviews take priority — always perform fresh review.
 4. One review per PR per commit SHA — never submit multiple reviews for same commit.
 
+## Review Priority
+
+Reviewers evaluate in this order:
+1. **Design value** — Is this feature/change worth building? Does it solve a real problem? Is the approach sound? If the design itself is flawed, REQUEST_CHANGES before reviewing any code.
+2. **Design conformance** — Does the implementation match the linked GitHub Issue spec? If it deviates, REQUEST_CHANGES — even if the code is technically correct.
+3. **Code quality** — See checklist below.
+
+A technically perfect implementation of a bad design is still wrong. Reject it.
+
 ## Review Checklist
 For each non-draft PR with a new commit:
 
@@ -50,5 +59,7 @@ For each non-draft PR with a new commit:
 - **REQUEST_CHANGES** — any issue found. Use inline comments.
 - **COMMENT** — CI pending or noting something without blocking.
 
-## Merge Policy
-**Bots must NEVER merge a PR.** All merges by human maintainer only.
+## Merge Policy (Loop Mode)
+- Both reviewers approve + CI green → bot auto-merges.
+- Reviewer timeout (15 min) → bot closes PR (iteration failed).
+- Single approve is not enough to merge. Both must approve.
