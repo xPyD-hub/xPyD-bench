@@ -91,6 +91,7 @@ _SUBCOMMANDS = {
     "lora-compare",
     "tag-compare",
     "autotune",
+    "size-impact",
 }
 
 
@@ -212,6 +213,10 @@ def main() -> None:
         from xpyd_bench.autotune import autotune_main
 
         autotune_main(rest)
+    elif subcmd == "size-impact":
+        from xpyd_bench.size_impact import size_impact_main
+
+        size_impact_main(rest)
 
 
 def _config_subcommand(argv: list[str]) -> None:
