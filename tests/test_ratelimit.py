@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
-
 import httpx
-import pytest
 
 from xpyd_bench.bench.ratelimit import (
     RatelimitSummary,
@@ -126,118 +123,6 @@ class TestAggregateRatelimit:
 # ---------------------------------------------------------------------------
 # Integration test — dummy server with ratelimit headers
 # ---------------------------------------------------------------------------
-
-
-@pytest.fixture()
-def _dummy_server_with_ratelimit(unused_tcp_port_factory):
-    """Start dummy server with ratelimit_rpm configured."""
-    import uvicorn
-
-    from xpyd_bench.dummy.server import ServerConfig, create_app
-
-    port = unused_tcp_port_factory()
-    config = ServerConfig(
-        prefill_ms=1,
-        decode_ms=1,
-        model_name="test-model",
-        max_tokens_default=5,
-        ratelimit_rpm=60,
-    )
-    app = create_app(config)
-
-    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error"))
-
-    loop = asyncio.new_event_loop()
-    import threading
-
-    thread = threading.Thread(target=loop.run_until_complete, args=(server.serve(),), daemon=True)
-    thread.start()
-
-    # Wait for server to start
-    import time as _time
-
-    for _ in range(50):
-        try:
-            httpx.get(f"http://127.0.0.1:{port}/health", timeout=0.5)
-            break
-        except Exception:
-            _time.sleep(0.1)
-
-    yield port
-
-    server.should_exit = True
-    thread.join(timeout=5)
-
-
-def test_dummy_server_ratelimit_headers(_dummy_server_with_ratelimit):
-    """Dummy server returns X-RateLimit-* headers when ratelimit_rpm is set."""
-    port = _dummy_server_with_ratelimit
-    resp = httpx.post(
-        f"http://127.0.0.1:{port}/v1/completions",
-        json={"model": "test-model", "prompt": "hello", "max_tokens": 3},
-        timeout=10,
-    )
-    assert resp.status_code == 200
-    assert "x-ratelimit-limit" in resp.headers
-    assert "x-ratelimit-remaining" in resp.headers
-    assert "x-ratelimit-reset" in resp.headers
-    assert resp.headers["x-ratelimit-limit"] == "60"
-
-
-def test_dummy_server_chat_ratelimit_headers(_dummy_server_with_ratelimit):
-    """Chat completions also returns rate-limit headers."""
-    port = _dummy_server_with_ratelimit
-    resp = httpx.post(
-        f"http://127.0.0.1:{port}/v1/chat/completions",
-        json={
-            "model": "test-model",
-            "messages": [{"role": "user", "content": "hello"}],
-            "max_tokens": 3,
-        },
-        timeout=10,
-    )
-    assert resp.status_code == 200
-    assert "x-ratelimit-limit" in resp.headers
-
-
-def test_dummy_server_no_ratelimit_without_config(unused_tcp_port_factory):
-    """Without ratelimit_rpm, no rate-limit headers are present."""
-    import uvicorn
-
-    from xpyd_bench.dummy.server import ServerConfig, create_app
-
-    port = unused_tcp_port_factory()
-    config = ServerConfig(prefill_ms=1, decode_ms=1, max_tokens_default=3)
-    app = create_app(config)
-
-    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error"))
-
-    loop = asyncio.new_event_loop()
-    import threading
-
-    thread = threading.Thread(target=loop.run_until_complete, args=(server.serve(),), daemon=True)
-    thread.start()
-
-    import time as _time
-
-    for _ in range(50):
-        try:
-            httpx.get(f"http://127.0.0.1:{port}/health", timeout=0.5)
-            break
-        except Exception:
-            _time.sleep(0.1)
-
-    try:
-        resp = httpx.post(
-            f"http://127.0.0.1:{port}/v1/completions",
-            json={"model": "dummy-model", "prompt": "hello", "max_tokens": 3},
-            timeout=10,
-        )
-        assert resp.status_code == 200
-        assert "x-ratelimit-limit" not in resp.headers
-    finally:
-        server.should_exit = True
-        thread.join(timeout=5)
 
 
 # ---------------------------------------------------------------------------

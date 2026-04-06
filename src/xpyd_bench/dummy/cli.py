@@ -57,32 +57,6 @@ def dummy_main(argv: list[str] | None = None) -> None:
         default=1536,
         help="Dimensionality of embedding vectors (default: 1536).",
     )
-    parser.add_argument(
-        "--max-rps",
-        type=float,
-        default=None,
-        help="Maximum requests per second before rejecting with 429 (default: unlimited).",
-    )
-    parser.add_argument(
-        "--ratelimit-rpm",
-        type=int,
-        default=None,
-        help="Include rate-limit headers in responses with this RPM limit.",
-    )
-    parser.add_argument(
-        "--speculative-draft-size",
-        type=int,
-        default=0,
-        dest="speculative_draft_size",
-        help="Emit x_spec data in SSE chunks with this draft batch size (0 disables).",
-    )
-    parser.add_argument(
-        "--speculative-acceptance-rate",
-        type=float,
-        default=0.8,
-        dest="speculative_acceptance_rate",
-        help="Simulated draft token acceptance rate (default 0.8).",
-    )
     args = parser.parse_args(argv)
 
     import uvicorn
@@ -97,10 +71,6 @@ def dummy_main(argv: list[str] | None = None) -> None:
         eos_min_ratio=args.eos_min_ratio,
         require_api_key=args.require_api_key,
         embedding_dim=args.embedding_dim,
-        max_rps=args.max_rps,
-        ratelimit_rpm=args.ratelimit_rpm,
-        speculative_draft_size=args.speculative_draft_size,
-        speculative_acceptance_rate=args.speculative_acceptance_rate,
     )
     app = create_app(config)
 

@@ -5,8 +5,6 @@ from __future__ import annotations
 import gzip
 import json
 
-import pytest
-
 from xpyd_bench.bench.debug_log import DebugLogEntry, DebugLogger
 from xpyd_bench.bench.runner import _compressed_request_kwargs
 
@@ -147,101 +145,4 @@ class TestDebugLogCompression:
         assert entry["compressed_bytes"] == 80
 
 
-# ---------------------------------------------------------------------------
-# Dummy server gzip decompression
-# ---------------------------------------------------------------------------
 
-
-class TestDummyServerGzip:
-    @pytest.fixture
-    def dummy_app(self):
-        from xpyd_bench.dummy.server import create_app
-
-        return create_app()
-
-    def test_dummy_server_accepts_gzip(self, dummy_app):
-        """Test that the dummy server correctly decompresses gzip request bodies."""
-        from starlette.testclient import TestClient
-
-        client = TestClient(dummy_app)
-        payload = {
-            "model": "test-model",
-            "prompt": "Hello, world!",
-            "max_tokens": 10,
-        }
-        raw = json.dumps(payload).encode()
-        compressed = gzip.compress(raw)
-
-        resp = client.post(
-            "/v1/completions",
-            content=compressed,
-            headers={
-                "Content-Encoding": "gzip",
-                "Content-Type": "application/json",
-            },
-        )
-        assert resp.status_code == 200
-        body = resp.json()
-        assert "choices" in body
-
-    def test_dummy_server_uncompressed_still_works(self, dummy_app):
-        """Ensure plain JSON still works (no regression)."""
-        from starlette.testclient import TestClient
-
-        client = TestClient(dummy_app)
-        payload = {
-            "model": "test-model",
-            "prompt": "Hello!",
-            "max_tokens": 5,
-        }
-        resp = client.post("/v1/completions", json=payload)
-        assert resp.status_code == 200
-        assert "choices" in resp.json()
-
-    def test_dummy_chat_accepts_gzip(self, dummy_app):
-        """Test chat endpoint with gzip."""
-        from starlette.testclient import TestClient
-
-        client = TestClient(dummy_app)
-        payload = {
-            "model": "test-model",
-            "messages": [{"role": "user", "content": "Hi"}],
-            "max_tokens": 5,
-        }
-        raw = json.dumps(payload).encode()
-        compressed = gzip.compress(raw)
-
-        resp = client.post(
-            "/v1/chat/completions",
-            content=compressed,
-            headers={
-                "Content-Encoding": "gzip",
-                "Content-Type": "application/json",
-            },
-        )
-        assert resp.status_code == 200
-        assert "choices" in resp.json()
-
-    def test_dummy_embeddings_accepts_gzip(self, dummy_app):
-        """Test embeddings endpoint with gzip."""
-        from starlette.testclient import TestClient
-
-        client = TestClient(dummy_app)
-        payload = {
-            "model": "test-model",
-            "input": "Hello embeddings",
-        }
-        raw = json.dumps(payload).encode()
-        compressed = gzip.compress(raw)
-
-        resp = client.post(
-            "/v1/embeddings",
-            content=compressed,
-            headers={
-                "Content-Encoding": "gzip",
-                "Content-Type": "application/json",
-            },
-        )
-        assert resp.status_code == 200
-        body = resp.json()
-        assert "data" in body

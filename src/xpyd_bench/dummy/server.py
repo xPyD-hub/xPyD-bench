@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import gzip
 import json
 import random
 import time
@@ -14,15 +13,6 @@ from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse, StreamingResponse
 from starlette.routing import Route
-
-
-async def _parse_json_body(request: Request) -> dict:
-    """Parse JSON body, handling gzip Content-Encoding transparently."""
-    raw = await request.body()
-    encoding = request.headers.get("content-encoding", "").lower()
-    if encoding == "gzip":
-        raw = gzip.decompress(raw)
-    return json.loads(raw)
 
 
 @dataclass
@@ -36,15 +26,6 @@ class ServerConfig:
     eos_min_ratio: float = 0.5  # EOS won't fire before this fraction of max_tokens
     require_api_key: str | None = None  # If set, require this API key for auth
     embedding_dim: int = 1536  # Dimensionality for embedding vectors
-    max_rps: float | None = None  # If set, reject requests above this rate (429)
-    ratelimit_rpm: int | None = None  # If set, include rate-limit headers in responses
-    speculative_draft_size: int = 0  # If >0, emit x_spec data in SSE chunks
-    speculative_acceptance_rate: float = 0.8  # Simulated draft token acceptance rate
-
-
-# Rate-limit tracking state for dummy server
-_ratelimit_remaining: int = 0
-_ratelimit_window_start: float = 0.0
 
 
 # Global config — set before starting the server
@@ -55,72 +36,6 @@ def set_config(config: ServerConfig) -> None:
     """Set server configuration."""
     global _config  # noqa: PLW0603
     _config = config
-    if config.ratelimit_rpm is not None:
-        global _ratelimit_remaining, _ratelimit_window_start  # noqa: PLW0603
-        _ratelimit_remaining = config.ratelimit_rpm
-        _ratelimit_window_start = time.time()
-
-
-def _maybe_add_spec_data(chunk: dict) -> None:
-    """Add speculative decoding metadata to SSE chunk if configured (M88)."""
-    if _config.speculative_draft_size > 0:
-        import random as _rng
-
-        draft = _config.speculative_draft_size
-        accepted = max(1, int(draft * _config.speculative_acceptance_rate + _rng.uniform(-1, 1)))
-        accepted = min(accepted, draft)
-        chunk["x_spec"] = {"draft_tokens": draft, "accepted_tokens": accepted}
-
-
-def _ratelimit_headers() -> dict[str, str]:
-    """Generate rate-limit response headers if ratelimit_rpm is configured."""
-    if _config.ratelimit_rpm is None:
-        return {}
-    global _ratelimit_remaining, _ratelimit_window_start  # noqa: PLW0603
-    now = time.time()
-    # Reset window every 60 seconds
-    if now - _ratelimit_window_start >= 60.0:
-        _ratelimit_remaining = _config.ratelimit_rpm
-        _ratelimit_window_start = now
-    _ratelimit_remaining = max(_ratelimit_remaining - 1, 0)
-    reset_at = int(_ratelimit_window_start + 60)
-    return {
-        "X-RateLimit-Limit": str(_config.ratelimit_rpm),
-        "X-RateLimit-Remaining": str(_ratelimit_remaining),
-        "X-RateLimit-Reset": str(reset_at),
-    }
-
-
-# Standard headers to exclude from echo
-_STANDARD_HEADERS = frozenset({
-    "host", "user-agent", "accept", "accept-encoding", "accept-language",
-    "connection", "content-length", "content-type", "authorization",
-    "transfer-encoding", "te",
-})
-
-
-def _extract_custom_headers(request: Request) -> dict[str, str]:
-    """Extract non-standard HTTP headers from the request for echo."""
-    custom: dict[str, str] = {}
-    for key, value in request.headers.items():
-        if key.lower() not in _STANDARD_HEADERS:
-            custom[key] = value
-    return custom
-
-
-def _echo_headers_dict(request: Request) -> dict[str, str]:
-    """Build response headers that echo custom request headers.
-
-    Also explicitly echoes X-Request-ID for direct correlation (M42).
-    """
-    custom = _extract_custom_headers(request)
-    result: dict[str, str] = {}
-    req_id = request.headers.get("x-request-id")
-    if req_id:
-        result["X-Request-ID"] = req_id
-    if custom:
-        result["x-echo-headers"] = json.dumps(custom, separators=(",", ":"))
-    return result
 
 
 def _normalize_prompt(prompt: str | list | None) -> str:
@@ -306,7 +221,7 @@ def _check_stop(text: str, stop: list[str] | str | None) -> tuple[bool, str]:
 
 async def _handle_completions(request: Request) -> JSONResponse | StreamingResponse:
     try:
-        body = await _parse_json_body(request)
+        body = await request.json()
     except Exception:
         return JSONResponse(
             {
@@ -357,7 +272,6 @@ async def _handle_completions(request: Request) -> JSONResponse | StreamingRespo
                 ignore_eos=ignore_eos,
             ),
             media_type="text/event-stream",
-            headers={**_echo_headers_dict(request), **_ratelimit_headers()},
         )
 
     # Non-streaming: simulate full latency (completions)
@@ -415,9 +329,7 @@ async def _handle_completions(request: Request) -> JSONResponse | StreamingRespo
     }
     if seed is not None:
         resp_body["system_fingerprint"] = f"fp_seed_{seed}"
-    hdrs = _echo_headers_dict(request)
-    hdrs.update(_ratelimit_headers())
-    return JSONResponse(resp_body, headers=hdrs)
+    return JSONResponse(resp_body)
 
 
 async def _stream_completions(
@@ -525,7 +437,6 @@ async def _stream_completions(
             }
             if seed is not None:
                 chunk["system_fingerprint"] = f"fp_seed_{seed}"
-            _maybe_add_spec_data(chunk)
             yield f"data: {json.dumps(chunk)}\n\n"
             await asyncio.sleep(_config.decode_ms / 1000.0)
 
@@ -638,7 +549,7 @@ def _build_json_response(response_format: dict, max_tokens: int) -> str:
 
 async def _handle_chat_completions(request: Request) -> JSONResponse | StreamingResponse:
     try:
-        body = await _parse_json_body(request)
+        body = await request.json()
     except Exception:
         return JSONResponse(
             {
@@ -697,7 +608,6 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
                 ignore_eos=ignore_eos,
             ),
             media_type="text/event-stream",
-            headers={**_echo_headers_dict(request), **_ratelimit_headers()},
         )
 
     # Non-streaming
@@ -781,9 +691,7 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
     }
     if seed is not None:
         resp_body["system_fingerprint"] = f"fp_seed_{seed}"
-    hdrs = _echo_headers_dict(request)
-    hdrs.update(_ratelimit_headers())
-    return JSONResponse(resp_body, headers=hdrs)
+    return JSONResponse(resp_body)
 
 
 async def _stream_chat_completions(
@@ -893,7 +801,6 @@ async def _stream_chat_completions(
             }
             if seed is not None:
                 chunk["system_fingerprint"] = f"fp_seed_{seed}"
-            _maybe_add_spec_data(chunk)
             yield f"data: {json.dumps(chunk)}\n\n"
             await asyncio.sleep(_config.decode_ms / 1000.0)
 
@@ -946,7 +853,7 @@ async def _handle_models(request: Request) -> JSONResponse:
 async def _handle_embeddings(request: Request) -> JSONResponse:
     """Handle POST /v1/embeddings — return random embedding vectors."""
     cfg = _config
-    body = await _parse_json_body(request)
+    body = await request.json()
 
     model = body.get("model", cfg.model_name)
     raw_input = body.get("input", "")
@@ -988,7 +895,6 @@ async def _handle_embeddings(request: Request) -> JSONResponse:
             "embedding": embedding_value,
         })
 
-    custom = _extract_custom_headers(request)
     response_body: dict = {
         "object": "list",
         "data": data,
@@ -998,158 +904,12 @@ async def _handle_embeddings(request: Request) -> JSONResponse:
             "total_tokens": total_tokens,
         },
     }
-    if custom:
-        response_body["_echoed_headers"] = custom
 
     return JSONResponse(response_body)
 
 
 async def _handle_health(request: Request) -> JSONResponse:
     return JSONResponse({"status": "ok"})
-
-
-# ---------------------------------------------------------------------------
-# Batch API (M41)
-# ---------------------------------------------------------------------------
-
-# In-memory batch store for the dummy server
-_batches: dict[str, dict] = {}
-
-
-async def _handle_create_batch(request: Request) -> JSONResponse:
-    """Handle POST /v1/batches — create a batch job."""
-    body = await _parse_json_body(request)
-    cfg = _config
-
-    input_requests = body.get("input", [])
-    endpoint = body.get("endpoint", "/v1/completions")
-    model = body.get("model", cfg.model_name)
-    metadata = body.get("metadata", {})
-
-    batch_id = f"batch_{uuid.uuid4().hex[:16]}"
-    now = time.time()
-    queue_delay = cfg.prefill_ms / 1000.0  # Simulate queue time using prefill_ms
-
-    batch_obj: dict = {
-        "id": batch_id,
-        "object": "batch",
-        "endpoint": endpoint,
-        "model": model,
-        "status": "validating",
-        "created_at": now,
-        "in_progress_at": None,
-        "completed_at": None,
-        "request_counts": {
-            "total": len(input_requests),
-            "completed": 0,
-            "failed": 0,
-        },
-        "metadata": metadata,
-        "input": input_requests,
-        "results": [],
-        "errors": {"object": "list", "data": []},
-        "_queue_delay": queue_delay,
-        "_process_delay": cfg.decode_ms * len(input_requests) / 1000.0,
-    }
-    _batches[batch_id] = batch_obj
-
-    # Schedule async processing
-    asyncio.create_task(_process_batch(batch_id))
-
-    # Return initial state
-    return JSONResponse({
-        "id": batch_id,
-        "object": "batch",
-        "endpoint": endpoint,
-        "status": "validating",
-        "created_at": now,
-        "request_counts": batch_obj["request_counts"],
-        "metadata": metadata,
-    })
-
-
-async def _process_batch(batch_id: str) -> None:
-    """Simulate batch processing in the background."""
-    batch = _batches.get(batch_id)
-    if not batch:
-        return
-
-    cfg = _config
-    queue_delay = batch["_queue_delay"]
-    process_delay = batch["_process_delay"]
-
-    # Simulate queue time
-    await asyncio.sleep(queue_delay)
-    now = time.time()
-    batch["status"] = "in_progress"
-    batch["in_progress_at"] = now
-
-    # Simulate processing time
-    await asyncio.sleep(process_delay)
-
-    # Generate dummy results
-    results = []
-    input_requests = batch.get("input", [])
-    for req in input_requests:
-        custom_id = req.get("custom_id", "")
-        body = req.get("body", {})
-        max_tokens = body.get("max_tokens", cfg.max_tokens_default)
-        rng = random.Random(hash(custom_id) & 0xFFFFFFFF)
-        n_tokens = rng.randint(
-            max(1, int(max_tokens * cfg.eos_min_ratio)), max_tokens,
-        )
-        text = " ".join(
-            rng.choice(["the", "a", "an", "is", "was", "will", "be", "to"])
-            for _ in range(n_tokens)
-        )
-        results.append({
-            "custom_id": custom_id,
-            "response": {
-                "status_code": 200,
-                "body": {
-                    "choices": [{"text": text, "index": 0, "finish_reason": "stop"}],
-                    "usage": {
-                        "prompt_tokens": len(
-                            str(body.get("prompt", body.get("messages", ""))).split()
-                        ),
-                        "completion_tokens": n_tokens,
-                        "total_tokens": len(
-                            str(body.get("prompt", body.get("messages", ""))).split()
-                        ) + n_tokens,
-                    },
-                },
-            },
-        })
-
-    batch["results"] = results
-    batch["request_counts"]["completed"] = len(results)
-    batch["status"] = "completed"
-    batch["completed_at"] = time.time()
-
-
-async def _handle_retrieve_batch(request: Request) -> JSONResponse:
-    """Handle GET /v1/batches/{batch_id} — retrieve batch status."""
-    batch_id = request.path_params["batch_id"]
-    batch = _batches.get(batch_id)
-    if not batch:
-        return JSONResponse(
-            {"error": {"message": f"Batch {batch_id} not found", "type": "not_found"}},
-            status_code=404,
-        )
-
-    return JSONResponse({
-        "id": batch["id"],
-        "object": "batch",
-        "endpoint": batch["endpoint"],
-        "status": batch["status"],
-        "created_at": batch["created_at"],
-        "in_progress_at": batch.get("in_progress_at"),
-        "completed_at": batch.get("completed_at"),
-        "request_counts": batch["request_counts"],
-        "metadata": batch.get("metadata", {}),
-        "results": batch.get("results", []),
-        "errors": batch.get("errors", {"object": "list", "data": []}),
-    })
 
 
 # ---------------------------------------------------------------------------
@@ -1180,49 +940,13 @@ def create_app(config: ServerConfig | None = None) -> Starlette:
                     )
             return await call_next(request)
 
-    import time as _time
-
-    class RateLimitMiddleware(BaseHTTPMiddleware):
-        """Reject requests above max_rps with 429 Too Many Requests."""
-
-        def __init__(self, app, max_rps: float):  # type: ignore[no-untyped-def]
-            super().__init__(app)
-            self._max_rps = max_rps
-            self._window: list[float] = []
-
-        async def dispatch(self, request: Request, call_next):  # type: ignore[override]
-            if not request.url.path.startswith("/v1/"):
-                return await call_next(request)
-            now = _time.monotonic()
-            # Slide 1-second window
-            self._window = [t for t in self._window if now - t < 1.0]
-            if len(self._window) >= self._max_rps:
-                return JSONResponse(
-                    {
-                        "error": {
-                            "message": "Rate limit exceeded",
-                            "type": "rate_limit_error",
-                        }
-                    },
-                    status_code=429,
-                )
-            self._window.append(now)
-            return await call_next(request)
-
-    # Clear batch store on app creation
-    _batches.clear()
-
     routes = [
         Route("/v1/completions", _handle_completions, methods=["POST"]),
         Route("/v1/chat/completions", _handle_chat_completions, methods=["POST"]),
         Route("/v1/embeddings", _handle_embeddings, methods=["POST"]),
-        Route("/v1/batches", _handle_create_batch, methods=["POST"]),
-        Route("/v1/batches/{batch_id}", _handle_retrieve_batch, methods=["GET"]),
         Route("/v1/models", _handle_models, methods=["GET"]),
         Route("/health", _handle_health, methods=["GET"]),
     ]
 
     middleware = [Middleware(AuthMiddleware)]
-    if _config.max_rps is not None:
-        middleware.append(Middleware(RateLimitMiddleware, max_rps=_config.max_rps))
     return Starlette(routes=routes, middleware=middleware)

@@ -172,25 +172,6 @@ def dummy_server():
     thread.join(timeout=5)
 
 
-class TestDummyServerEcho:
-    def test_echo_request_id(self, dummy_server):
-        """Dummy server echoes X-Request-ID in response headers."""
-        base_url = dummy_server
-
-        async def _run():
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
-                    f"{base_url}/v1/completions",
-                    json={"model": "test-model", "prompt": "hi", "max_tokens": 5},
-                    headers={"X-Request-ID": "test-rid-123"},
-                    timeout=10.0,
-                )
-                assert resp.status_code == 200
-                assert resp.headers.get("X-Request-ID") == "test-rid-123"
-
-        asyncio.run(_run())
-
-
 class TestSendRequestWithId:
     def test_request_id_injected(self, dummy_server):
         """_send_request injects X-Request-ID and stores it in result."""
