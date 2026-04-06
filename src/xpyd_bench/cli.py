@@ -1157,6 +1157,19 @@ def _add_vllm_compat_args(parser: argparse.ArgumentParser) -> None:
     )
 
     # On-complete command (M63)
+    # Reproducibility score (M99)
+    parser.add_argument(
+        "--reproducibility-check",
+        type=int,
+        default=None,
+        dest="reproducibility_check",
+        metavar="N",
+        help=(
+            "Run benchmark N times and compute a reproducibility score "
+            "based on coefficient of variation across runs (0-100)."
+        ),
+    )
+
     parser.add_argument(
         "--on-complete",
         type=str,
@@ -1230,6 +1243,11 @@ def _dry_run(args: argparse.Namespace, base_url: str) -> None:
     repeat_delay = getattr(args, "repeat_delay", 0.0)
     if repeat_count > 1:
         print(f"  Repeat:          {repeat_count}x (delay: {repeat_delay}s)")
+
+    # Reproducibility check (M99)
+    repro_check = getattr(args, "reproducibility_check", None)
+    if repro_check:
+        print(f"  Reproducibility: {repro_check} runs (score 0-100)")
 
     # Connection pool (M28)
     http2 = getattr(args, "http2", False)
@@ -1674,9 +1692,14 @@ def bench_main(argv: list[str] | None = None) -> None:
     print(f"  Max concurrency:{args.max_concurrency or 'unlimited'}")
     print(f"  Input len:      {args.input_len}")
     print(f"  Output len:     {args.output_len}")
+    repro_check = getattr(args, "reproducibility_check", None)
     repeat_count = getattr(args, "repeat", 1)
     repeat_delay = getattr(args, "repeat_delay", 0.0)
-    if repeat_count > 1:
+    if repro_check and repro_check > 1:
+        # Reproducibility check overrides repeat
+        repeat_count = repro_check
+        print(f"  Reproducibility: {repro_check} runs")
+    elif repeat_count > 1:
         print(f"  Repeat:         {repeat_count}x (delay: {repeat_delay}s)")
     print()
 
@@ -1717,6 +1740,19 @@ def bench_main(argv: list[str] | None = None) -> None:
         )
     else:
         result, bench_result = asyncio.run(run_benchmark(args, base_url))
+
+    # Reproducibility analysis (M99) — after runs complete
+    if repro_check and repro_check > 1:
+        from xpyd_bench.reproducibility import (
+            compute_reproducibility,
+            print_reproducibility_report,
+        )
+
+        # Collect per-run results from repeat
+        run_results = result.get("repeat_results", [result])
+        repro_result = compute_reproducibility(run_results, num_runs=repro_check)
+        print_reproducibility_report(repro_result)
+        result["reproducibility"] = repro_result.to_dict()
 
     # Inject tags (M36)
     parsed_tags = _parse_tags(args)

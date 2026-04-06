@@ -88,4 +88,5 @@
 | 7 | 2026-04-06 | M95: Benchmark Result Diffing by Tag | ✅ merged (PR #254) | Both approved |
 | 8 | 2026-04-06 | M96: Endpoint Response Consistency Check | ✅ merged (PR #256) | Both approved |
 | 9 | 2026-04-06 | M97: Request Latency Heatmap Data Export | ✅ merged (PR #258) | Both approved |
-| 10 | 2026-04-06 | M98: Auto-Tuning Optimal Configuration | ⏳ in progress | — |
+| 10 | 2026-04-06 | M98: Auto-Tuning Optimal Configuration | ✅ merged (PR #260) | Both approved |
+| 11 | 2026-04-06 | M99: Benchmark Reproducibility Score | ⏳ in progress | — |
