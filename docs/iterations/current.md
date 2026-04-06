@@ -7,7 +7,7 @@
 ### What was done
 
 - Added `xpyd-bench tag-compare --result-dir <path> --group-by <tag-key>` CLI subcommand
-- New module `src/xpyd_bench/tag_compare.py` implementing:
+- New module `xpyd_bench/tag_compare.py` implementing:
   - `group_results_by_tag()` — groups JSON results by tag value
   - `compute_group_stats()` — per-group mean for all standard metrics
   - `compute_pairwise_significance()` — Mann-Whitney U test between all group pairs
@@ -22,8 +22,8 @@
 - 33 tests covering grouping, stats, significance, formatting, CLI, edge cases
 
 ### Files Changed
-- `src/xpyd_bench/tag_compare.py` (new)
-- `src/xpyd_bench/main.py` (registered `tag-compare` subcommand)
+- `xpyd_bench/tag_compare.py` (new)
+- `xpyd_bench/main.py` (registered `tag-compare` subcommand)
 - `tests/test_tag_compare.py` (new, 33 tests)
 - `docs/iterations/current.md` (this file)
 

@@ -52,7 +52,7 @@ xpyd-dummy = "xpyd_bench.dummy.cli:dummy_main"
 # bench = "xpyd_bench.cli:bench_main"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
 
 [tool.ruff]
 line-length = 100

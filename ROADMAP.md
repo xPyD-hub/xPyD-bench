@@ -14,7 +14,7 @@
 - Dummy prefill/decode server simulating vLLM behavior
 - Support /v1/completions and /v1/chat/completions
 - Streaming response simulation with configurable latency
-- Decoupled from bench code (separate module in `src/xpyd_bench/dummy/`)
+- Decoupled from bench code (separate module in `xpyd_bench/dummy/`)
 - Used for bench validation without real GPU hardware
 
 ## M3: Full OpenAI API Parameter Coverage ✅
@@ -163,7 +163,7 @@
 - Tests covering SLA pass, SLA fail, partial SLA, missing metrics
 
 ## M21: Environment Info Capture ✅
-- `collect_env_info()` utility in `src/xpyd_bench/bench/env.py`
+- `collect_env_info()` utility in `xpyd_bench/bench/env.py`
 - Captures: Python version, OS, platform, CPU architecture, hostname, xpyd-bench version, ISO 8601 timestamp
 - `BenchmarkResult` includes `environment` dict field (auto-populated)
 - All saved JSON results include `environment` section
@@ -333,7 +333,7 @@
 - Tests covering ID generation, header injection, echo, and export
 
 ## M43: Request Latency Anomaly Detection ✅
-- `detect_anomalies()` function in `src/xpyd_bench/bench/anomaly.py` using IQR method
+- `detect_anomalies()` function in `xpyd_bench/bench/anomaly.py` using IQR method
 - `--anomaly-threshold <float>` CLI flag (default 1.5, 0 disables)
 - BenchmarkResult includes `anomalies` dict field
 - JSON output includes `anomalies` section when anomalies found
@@ -533,7 +533,7 @@
 - `--quiet`/`-q` CLI flag to suppress non-essential output (errors and final JSON only)
 - `--verbose`/`-v` CLI flag for extra detail (config summary, per-request progress)
 - Default behavior unchanged (normal verbosity)
-- `Verbosity` enum and `VerbosityPrinter` utility in `src/xpyd_bench/bench/verbosity.py`
+- `Verbosity` enum and `VerbosityPrinter` utility in `xpyd_bench/bench/verbosity.py`
 - `parse_verbosity()` helper for string-to-enum conversion
 - YAML config support (`verbosity: quiet|normal|verbose`)
 - CLI flags override YAML config
@@ -657,7 +657,7 @@
 - Tests covering stats computation, CLI flag, YAML config, and edge cases
 
 ## M79: Git Metadata Capture in Benchmark Results ✅
-- `collect_git_info()` utility in `src/xpyd_bench/bench/env.py`
+- `collect_git_info()` utility in `xpyd_bench/bench/env.py`
 - Auto-detect git repository and capture: commit hash, short commit, branch, dirty status, remote URL
 - `BenchmarkResult` includes `git_info` dict field (auto-populated, None if not in git repo)
 - All saved JSON results include `git_info` section when available

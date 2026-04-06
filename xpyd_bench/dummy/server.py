@@ -299,6 +299,7 @@ async def _handle_completions(request: Request) -> JSONResponse | StreamingRespo
             "index": i,
             "text": generated_text,
             "finish_reason": finish_reason,
+            "stop_reason": None,
         }
 
         if logprobs_count is not None:
@@ -327,6 +328,7 @@ async def _handle_completions(request: Request) -> JSONResponse | StreamingRespo
             "total_tokens": prompt_tokens + total_completion_tokens,
         },
     }
+    resp_body["service_tier"] = None
     if seed is not None:
         resp_body["system_fingerprint"] = f"fp_seed_{seed}"
     return JSONResponse(resp_body)
@@ -371,6 +373,7 @@ async def _stream_completions(
                         "index": choice_idx,
                         "text": prompt_text,
                         "finish_reason": None,
+                        "stop_reason": None,
                     }
                 ],
             }
@@ -393,6 +396,7 @@ async def _stream_completions(
                         "index": choice_idx,
                         "text": token_text,
                         "finish_reason": "stop",
+                        "stop_reason": None,
                     }
                     if logprobs_count is not None:
                         choice_data["logprobs"] = _make_logprobs_data(
@@ -422,6 +426,7 @@ async def _stream_completions(
                 "index": choice_idx,
                 "text": token_text,
                 "finish_reason": finish_reason,
+                "stop_reason": None,
             }
             if logprobs_count is not None:
                 choice_data["logprobs"] = _make_logprobs_data(token_text, logprobs_count)
@@ -639,6 +644,7 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
                     "tool_calls": tool_calls_out,
                 },
                 "finish_reason": finish_reason,
+                "stop_reason": None,
             }
         elif response_format and response_format.get("type") in (
             "json_object",
@@ -652,6 +658,7 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
                 "index": i,
                 "message": {"role": "assistant", "content": generated_text},
                 "finish_reason": finish_reason,
+                "stop_reason": None,
             }
         else:
             generated_text = " ".join(["token"] * actual_tokens)
@@ -664,6 +671,7 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
                 "index": i,
                 "message": {"role": "assistant", "content": generated_text},
                 "finish_reason": finish_reason,
+                "stop_reason": None,
             }
 
         if logprobs and top_logprobs is not None and generated_text:
@@ -689,6 +697,7 @@ async def _handle_chat_completions(request: Request) -> JSONResponse | Streaming
             "total_tokens": prompt_tokens + total_completion_tokens,
         },
     }
+    resp_body["service_tier"] = None
     if seed is not None:
         resp_body["system_fingerprint"] = f"fp_seed_{seed}"
     return JSONResponse(resp_body)
@@ -732,6 +741,7 @@ async def _stream_chat_completions(
                     "delta": {"role": "assistant", "content": ""},
                     "logprobs": None,
                     "finish_reason": None,
+                    "stop_reason": None,
                 }
             ],
         }
@@ -754,6 +764,7 @@ async def _stream_chat_completions(
                         "index": choice_idx,
                         "delta": delta,
                         "finish_reason": "stop",
+                        "stop_reason": None,
                     }
                     if logprobs and top_logprobs is not None:
                         choice_data["logprobs"] = {
@@ -784,6 +795,7 @@ async def _stream_chat_completions(
                 "index": choice_idx,
                 "delta": delta,
                 "finish_reason": finish_reason,
+                "stop_reason": None,
             }
             if logprobs and top_logprobs is not None:
                 choice_data["logprobs"] = {
@@ -884,7 +896,7 @@ async def _handle_embeddings(request: Request) -> JSONResponse:
             import base64
             import struct
 
-            raw_bytes = struct.pack(f"{len(vector)}f", *vector)
+            raw_bytes = struct.pack(f"<{len(vector)}f", *vector)
             embedding_value = base64.b64encode(raw_bytes).decode("ascii")
         else:
             embedding_value = vector
