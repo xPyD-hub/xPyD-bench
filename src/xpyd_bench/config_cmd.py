@@ -154,6 +154,7 @@ _KNOWN_KEYS: set[str] = {
     "autotune_max_concurrency",
     "autotune_error_budget",
     "autotune_prompts",
+    "reproducibility_check",
 }
 
 # Deprecated keys (currently none, placeholder for future use)

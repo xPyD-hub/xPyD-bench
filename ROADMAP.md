@@ -838,7 +838,7 @@
 - Useful for visualizing latency distribution changes over benchmark duration
 - Tests covering bucketing logic, histogram binning, export format, and edge cases
 
-## M98: Auto-Tuning Optimal Configuration ✗
+## M98: Auto-Tuning Optimal Configuration ✅
 - `xpyd-bench autotune --base-url <url> --model <model>` CLI subcommand
 - Automatically find optimal concurrency and request rate for maximum throughput
 - Binary search strategy: increase concurrency until error rate exceeds threshold or throughput plateaus
@@ -850,7 +850,7 @@
 - `--generate-config <path>` writes optimized YAML config based on results
 - Tests covering binary search logic, convergence, config generation, and CLI integration
 
-## M99: Benchmark Reproducibility Score ✗
+## M99: Benchmark Reproducibility Score ✅
 - `--reproducibility-check N` flag to run benchmark N times and compute reproducibility score
 - Coefficient of variation (CV) across runs for key metrics
 - Score: 0-100 based on CV thresholds (CV<5% = excellent, CV<10% = good, etc.)
