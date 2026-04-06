@@ -838,7 +838,7 @@
 - Useful for visualizing latency distribution changes over benchmark duration
 - Tests covering bucketing logic, histogram binning, export format, and edge cases
 
-## M98: Auto-Tuning Optimal Configuration ✗
+## M98: Auto-Tuning Optimal Configuration ✅
 - `xpyd-bench autotune --base-url <url> --model <model>` CLI subcommand
 - Automatically find optimal concurrency and request rate for maximum throughput
 - Binary search strategy: increase concurrency until error rate exceeds threshold or throughput plateaus
