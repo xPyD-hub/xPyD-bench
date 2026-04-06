@@ -30,12 +30,44 @@ The dummy server simulates a **vLLM backend** for bench validation. It must stay
 3. **Response format**: must match vLLM's response structure, including vLLM-specific fields (`stop_reason`, `service_tier`, `kv_transfer_params`).
 4. **No test-only hacks**: features like gzip decompression, rate-limit simulation (429/X-RateLimit headers), custom header echo, speculative decoding metadata injection, or online /v1/batches API do NOT belong in the dummy server — they are not vLLM behaviors.
 
+### API Compatibility Levels
+
+The dummy server implements two levels of API compatibility, matching xPyD-sim:
+
+**Level 1: OpenAI API Spec**
+- Accept and validate all OpenAI API parameters
+- Response format matches OpenAI spec
+- Parameter range validation (temperature, top_p, penalties)
+- response_format (json_object / json_schema)
+- Embedding encoding_format (float / base64)
+
+**Level 2: vLLM Backend Extensions**
+- Accept all vLLM-specific sampling params without error
+- Response includes vLLM fields: `stop_reason`, `service_tier`
+- base64 encoding uses little-endian byte order
+
 ### What Belongs Here vs. Elsewhere
 | Need | Where to implement |
 |---|---|
 | Simulating vLLM inference behavior | ✅ Dummy server |
 | Testing bench's own features (compression, rate-limit tracking, header injection) | ❌ NOT dummy server — use a separate test fixture/middleware |
 | Features vLLM doesn't support | ❌ NOT dummy server |
+
+### API Compatibility Levels
+
+The dummy server implements two levels of API compatibility, matching xPyD-sim:
+
+**Level 1: OpenAI API Spec**
+- Accept and validate all OpenAI API parameters
+- Response format matches OpenAI spec
+- Parameter range validation (temperature, top_p, penalties)
+- response_format (json_object / json_schema)
+- Embedding encoding_format (float / base64, little-endian byte order)
+
+**Level 2: vLLM Backend Extensions**
+- Accept all vLLM-specific sampling params without error
+- Response includes vLLM fields: `stop_reason`, `service_tier`
+- Responses match vLLM's shape, not just OpenAI's
 
 ### Co-Evolution with xPyD-sim
 - The dummy server will eventually be **replaced by xPyD-sim** as the canonical vLLM simulator.
@@ -53,6 +85,6 @@ The dummy server simulates a **vLLM backend** for bench validation. It must stay
 - Committer must be `hlin99 <tony.lin@intel.com>`
 - All code, docs, issues, PRs in English
 - Commit messages: conventional commits format
-- Code in `src/xpyd_bench/`, tests in `tests/`
-- Dummy server in `src/xpyd_bench/dummy/` (decoupled from bench code)
+- Code in `xpyd_bench/`, tests in `tests/`
+- Dummy server in `xpyd_bench/dummy/` (decoupled from bench code)
 - Follow pyproject.toml ruff/isort config
