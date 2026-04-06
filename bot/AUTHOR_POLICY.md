@@ -6,50 +6,50 @@
 Rules for the bot that writes code and submits PRs.
 
 ## Identity
-
 | Role | GitHub Account |
 |------|---------------|
 | Author | `hlin99` |
 
 ## Before Coding
-
 1. Pull latest main: `git pull origin main`
-2. Create feature branch: `git checkout -b <type>/<short-description>`
+2. Create branch: `git checkout -b <type>/<short-description>`
 3. Read [DESIGN_PRINCIPLES.md](DESIGN_PRINCIPLES.md) for architecture constraints.
 
 ## Code Quality
-
-1. Run lint: `ruff check xpyd_bench tests`
-2. Run tests: `pytest tests/ -q`
-3. Rebase before push: `git pull --rebase origin main`
+- Run pre-commit: `pre-commit run --all-files`
+- Run lint: `ruff check xpyd_bench tests`
+- Run tests: `pytest tests/ -q`
+- All must pass locally before pushing.
 
 ## PR Submission
-
-1. **One PR per task.** Don't bundle unrelated changes.
-2. **Descriptive title.** Format: `type: short description` (e.g., `feat: add SLA validation`).
-3. **PR body must include:** what changed, why, test coverage, breaking changes.
-4. **All CI must pass** before requesting review.
+1. One PR per task. Don't bundle unrelated changes.
+2. Descriptive title: `type: short description`
+3. PR body: what changed, why, test coverage, breaking changes. Reference issues (`closes #N`).
+4. All CI must pass before requesting review.
 
 ## Responding to Review
+1. Address ALL `REQUEST_CHANGES` feedback before requesting re-review.
+2. Always push new commits — never amend or force-push.
+3. Reply to each review comment with fix commit ref (e.g. "Fixed in `abc1234`").
+4. Re-request review after pushing fixes (don't wait for reviewer to notice).
+5. If reviewer is wrong, explain with evidence (link to source, docs, spec).
 
-1. Fix all blockers before re-requesting review.
-2. Reply to every comment — "Fixed in <commit>" or explain disagreement with evidence.
-3. Push new commits (don't force push over reviewer comments).
-4. **Never force push.** If the branch is too messy, close the PR and open a new one.
+## PR Maintenance
+When there are open (non-draft) PRs, check every 5 minutes:
+1. Update branch — if behind main, merge main into branch.
+2. CI check — if any check failed, examine logs, fix code, push new commit.
+3. Review comment check — read all `CHANGES_REQUESTED` reviews, fix issues, push, reply.
+4. Re-request review after fixes.
 
 ## Documentation Updates
-
 Every PR must update relevant documentation:
 
 | Change Type | Update |
 |---|---|
-| New feature / CLI argument | `docs/guide.md` — add usage section |
-| Architecture change | `docs/architecture.md` — update descriptions |
-| Design decision | `docs/design.md` — append decision record |
-| Quick Start affected | `README.md` — update (keep it one screen max, link to guide.md) |
-| PR completed | `bot/iterations/current.md` — append summary |
+| New feature / CLI argument | `docs/guide.md` |
+| Architecture change | `docs/architecture.md` |
+| Design decision | `docs/design.md` |
+| Quick Start affected | `README.md` (keep one screen, link to guide.md) |
+| PR completed | `bot/iterations/current.md` |
 
-`docs/guide.md` is the source of truth for how to use the tool.
-`docs/architecture.md` and `docs/design.md` are append-only — never delete history.
-
-When current iteration is complete, rename `bot/iterations/current.md` to `YYYY-MM-DD-<topic>.md` and create a fresh `current.md`.
+When iteration complete: rename `bot/iterations/current.md` to `YYYY-MM-DD-<topic>.md`, create fresh `current.md`.

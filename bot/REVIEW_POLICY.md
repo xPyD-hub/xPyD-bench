@@ -4,29 +4,51 @@
 # Review Policy — xPyD-bench
 
 ## Roles
-
 | Role | GitHub Account | Action |
 |------|---------------|--------|
-| Implementer | `hlin99` | Write code, submit PRs, fix issues |
-| Reviewer 1 | `hlin99-Review-Bot` | Review PRs: approve / request changes / close |
-| Reviewer 2 | `hlin99-Review-BotX` | Review PRs: approve / request changes / close |
+| Implementer | `hlin99` | Write code, submit PRs |
+| Reviewer 1 | `hlin99-Review-Bot` | Review PRs |
+| Reviewer 2 | `hlin99-Review-BotX` | Review PRs |
+
+Each reviewer uses its own dedicated token. Never use author's token for reviews.
 
 ## Timing Parameters
-
-These are the single source of truth for all timing values:
-
 | Parameter | Value |
 |-----------|-------|
 | Iteration interval | 10 minutes |
 | PR wait for review | max 15 minutes |
 | Fix after request changes | max 10 minutes |
-| Reviewer check frequency | every 5 minutes |
+| Reviewer check frequency (has PRs) | every 5 minutes |
+| Reviewer check frequency (no PRs) | every 15 minutes |
 | Reviewer response deadline | 15 minutes after assign |
 | Reviewer timeout action | close PR (iteration failed) |
 
-## Review Standards
+## What to Review
+1. Skip draft PRs.
+2. Skip already-reviewed commits (only APPROVE counts as reviewed).
+3. Re-requested reviews take priority — always perform fresh review.
+4. One review per PR per commit SHA — never submit multiple reviews for same commit.
 
-- At least 1 approval required to merge.
-- Blockers (🔴) must be fixed. No exceptions.
-- Yellow (🟡) issues should be fixed unless author provides good reason.
-- All CI checks must pass.
+## Review Checklist
+For each non-draft PR with a new commit:
+
+| Area | Check |
+|---|---|
+| CI | Must be fully green before APPROVE. May submit REQUEST_CHANGES or COMMENT while pending. |
+| Merge conflicts | If mergeable == false, REQUEST_CHANGES. |
+| Logic errors | Incorrect conditions, off-by-one, unhandled edge cases. |
+| Type safety | Mismatched types, missing None checks. |
+| Concurrency | Race conditions, missing locks, shared mutable state. |
+| Exception handling | Bare except, swallowed exceptions, resource leaks. |
+| Security | Injection risks, hardcoded secrets, unsanitized input. |
+| Code style | Unused imports, shadowed variables, unclear naming. |
+| Test coverage | New logic must have corresponding tests. |
+| Design conformance | Implementation must match the linked GitHub Issue design. |
+
+## Verdicts
+- **APPROVE** — code correct, CI green, no issues.
+- **REQUEST_CHANGES** — any issue found. Use inline comments.
+- **COMMENT** — CI pending or noting something without blocking.
+
+## Merge Policy
+**Bots must NEVER merge a PR.** All merges by human maintainer only.
