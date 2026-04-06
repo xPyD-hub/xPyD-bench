@@ -1,14 +1,17 @@
-📖 **[完整使用指南 → docs/guide.md](docs/guide.md)**
-
 # xPyD-bench
 
-Benchmarking & PD ratio planning tool for [xPyD-proxy](https://github.com/xPyD-hub/xPyD-proxy).
+**Benchmarking & PD ratio planning tool for LLM inference endpoints.**
 
-## Features
+xPyD-bench measures the performance of OpenAI-compatible LLM serving endpoints with detailed latency, throughput, and quality metrics. Built as a superset of vLLM bench with full CLI compatibility.
 
-- **`xpyd-bench`** — Benchmark xPyD proxy with configurable concurrency, request patterns, and both `/v1/completions` and `/v1/chat/completions` endpoints
+## Key Features
 
-For PD ratio planning, see [xPyD-plan](https://github.com/xPyD-hub/xPyD-plan).
+- **vLLM bench compatible CLI** — drop-in replacement, same arguments
+- **Rich metrics** — TTFT, TPOT, ITL, P50/P90/P95/P99, throughput
+- **Flexible load patterns** — constant, burst, ramp, poisson, custom
+- **Multiple datasets** — JSONL, CSV, JSON, synthetic generation
+- **Advanced analysis** — comparison, regression detection, SLA validation, cost estimation
+- **Reports** — JSON, CSV, Markdown, HTML dashboard, JUnit XML, Prometheus
 
 ## Install
 
@@ -16,37 +19,37 @@ For PD ratio planning, see [xPyD-plan](https://github.com/xPyD-hub/xPyD-plan).
 pip install xpyd-bench
 ```
 
-## Quick Start
-
-### Benchmark
+Or as part of the full xPyD toolkit:
 
 ```bash
-# Run benchmark against a running xPyD proxy
-xpyd-bench --target http://localhost:8080 \
-           --endpoint chat \
-           --concurrency 16 \
-           --num-requests 200 \
-           --output results.json
-
-# Use completion endpoint
-xpyd-bench --target http://localhost:8080 \
-           --endpoint completion \
-           --concurrency 8 \
-           --num-requests 100
+pip install xpyd
 ```
 
-## Configuration
+## Quick Start
 
-See [examples/](examples/) for sample configs and scenarios.
+```bash
+# Benchmark a running endpoint
+xpyd-bench --base-url http://localhost:8080 \
+           --model my-model \
+           --dataset-name random \
+           --num-prompts 100
 
-## Output Metrics
+# Compare two runs
+xpyd-bench compare baseline.json candidate.json
+```
 
-- **TTFT** — Time to first token
-- **TPS** — Tokens per second (per request & aggregate)
-- **Latency** — P50 / P90 / P99 end-to-end latency
-- **Throughput** — Total requests/sec and tokens/sec
-- **Error rate** — Failed requests count and percentage
+## Part of xPyD
+
+xPyD-bench is part of the [xPyD ecosystem](https://github.com/xPyD-hub/xPyD) for PD-disaggregated LLM serving:
+
+| Component | Description |
+|-----------|-------------|
+| [xpyd-proxy](https://github.com/xPyD-hub/xPyD-proxy) | Prefill-Decode disaggregated proxy |
+| [xpyd-sim](https://github.com/xPyD-hub/xPyD-sim) | OpenAI-compatible inference simulator |
+| **xpyd-bench** | Benchmarking & planning tool |
+
+📖 **[Full Guide →](docs/guide.md)** | 💡 **[Examples →](examples/)** | 🏗️ **[Contributing →](CONTRIBUTING.md)**
 
 ## License
 
-TBD
+Apache 2.0 — see [LICENSE](LICENSE)
