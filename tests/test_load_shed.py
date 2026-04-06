@@ -349,32 +349,6 @@ class TestCLIIntegration:
 
 
 # ---------------------------------------------------------------------------
-# Dummy server rate limiting
-# ---------------------------------------------------------------------------
-
-class TestDummyServerRateLimit:
-    def test_server_config_max_rps(self):
-        from xpyd_bench.dummy.server import ServerConfig
-
-        config = ServerConfig(max_rps=10.0)
-        assert config.max_rps == 10.0
-
-    def test_server_config_default_no_limit(self):
-        from xpyd_bench.dummy.server import ServerConfig
-
-        config = ServerConfig()
-        assert config.max_rps is None
-
-    def test_create_app_with_rate_limit(self):
-        from xpyd_bench.dummy.server import ServerConfig, create_app
-
-        config = ServerConfig(max_rps=5.0)
-        app = create_app(config)
-        # App should have 2 middleware (auth + rate limit)
-        assert len(app.middleware_stack.__class__.__mro__) > 1  # basic sanity
-
-
-# ---------------------------------------------------------------------------
 # YAML config support
 # ---------------------------------------------------------------------------
 

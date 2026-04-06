@@ -65,15 +65,6 @@ class TestDummyEmbeddings:
         r2 = client.post("/v1/embeddings", json={"input": "world"}).json()
         assert r1["data"][0]["embedding"] != r2["data"][0]["embedding"]
 
-    def test_custom_headers_echo(self, client):
-        """Custom headers are echoed in response."""
-        r = client.post(
-            "/v1/embeddings",
-            json={"input": "x"},
-            headers={"X-Custom": "test-val"},
-        ).json()
-        assert r.get("_echoed_headers", {}).get("x-custom") == "test-val"
-
 
 class TestEmbeddingsPayloadBuilder:
     """Verify _build_payload generates correct embeddings payloads."""

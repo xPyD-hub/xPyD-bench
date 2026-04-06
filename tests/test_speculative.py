@@ -252,25 +252,4 @@ class TestConfigKey:
         assert "speculative_metrics" in _KNOWN_KEYS
 
 
-# ---------------------------------------------------------------------------
-# Dummy server speculative config test
-# ---------------------------------------------------------------------------
 
-
-class TestDummyServerConfig:
-    """Test dummy server speculative decoding configuration."""
-
-    def test_server_config_fields(self):
-        """ServerConfig has speculative fields."""
-        from xpyd_bench.dummy.server import ServerConfig
-
-        cfg = ServerConfig(speculative_draft_size=5, speculative_acceptance_rate=0.7)
-        assert cfg.speculative_draft_size == 5
-        assert cfg.speculative_acceptance_rate == 0.7
-
-    def test_default_disabled(self):
-        """Speculative decoding is disabled by default."""
-        from xpyd_bench.dummy.server import ServerConfig
-
-        cfg = ServerConfig()
-        assert cfg.speculative_draft_size == 0

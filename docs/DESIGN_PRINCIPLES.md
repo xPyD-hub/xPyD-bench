@@ -20,13 +20,28 @@ A comprehensive benchmarking tool for LLM inference endpoints, built as an enhan
 - **Extended metrics**: beyond what vLLM bench provides.
 - Think about what else users need that vLLM bench doesn't offer.
 
-## Dummy Server — Co-Evolution Rule (IMPORTANT)
-- A dummy prefill/decode server that simulates vLLM behavior for bench validation
-- Must support all OpenAI API endpoints that bench tests against
-- Streaming response simulation with configurable latency
-- Code must be decoupled from bench — separate module, no imports between them
-- **Every bench feature must have a corresponding dummy implementation.** When bench adds a new capability (new endpoint, new parameter, new request pattern), the dummy server MUST be updated in the same PR or the immediately following one. Bench and dummy mature together — never let dummy fall behind.
-- Goal: when dummy is mature, it migrates to the xPyD-simulator repo
+## Dummy Server — vLLM Boundary Rule (IMPORTANT)
+
+The dummy server simulates a **vLLM backend** for bench validation. It must stay strictly within vLLM's API surface:
+
+### Hard Rules
+1. **Only implement features that vLLM actually supports.** If vLLM doesn't have it, the dummy server must not have it.
+2. **OpenAI API parameters**: only those that vLLM's OpenAI-compatible server accepts (including vLLM extensions like `best_of`, `top_k`, `min_p`, etc.).
+3. **Response format**: must match vLLM's response structure, including vLLM-specific fields (`stop_reason`, `service_tier`, `kv_transfer_params`).
+4. **No test-only hacks**: features like gzip decompression, rate-limit simulation (429/X-RateLimit headers), custom header echo, speculative decoding metadata injection, or online /v1/batches API do NOT belong in the dummy server — they are not vLLM behaviors.
+
+### What Belongs Here vs. Elsewhere
+| Need | Where to implement |
+|---|---|
+| Simulating vLLM inference behavior | ✅ Dummy server |
+| Testing bench's own features (compression, rate-limit tracking, header injection) | ❌ NOT dummy server — use a separate test fixture/middleware |
+| Features vLLM doesn't support | ❌ NOT dummy server |
+
+### Co-Evolution with xPyD-sim
+- The dummy server will eventually be **replaced by xPyD-sim** as the canonical vLLM simulator.
+- Any feature added to the dummy must also exist (or be planned) in xPyD-sim.
+- When in doubt, check vLLM's source: `vllm/entrypoints/openai/` is the reference.
+- Code must be decoupled from bench — separate module, no imports between them.
 
 ## Principles
 - **Independent thinking**: reference vLLM bench for alignment, but design our own enhancements
